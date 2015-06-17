@@ -26,6 +26,8 @@ $testlib_checker = 7;
 $partial_checker = 8;
 $validator = 9;
 $validator_module = 10;
+$formal = 11;
+$formal_module = 12;
 
 %source_module_names = (
     $generator => 'generator',
@@ -38,7 +40,9 @@ $validator_module = 10;
     $testlib_checker => 'checker',
     $partial_checker => 'partial checker',
     $validator => 'validator',
-    $validator_module => 'validator module'
+    $validator_module => 'validator module',
+    $formal => 'formal',
+    $formal_module => 'formal module'
 );
 
 # Map source types to module types.
@@ -49,7 +53,8 @@ $validator_module = 10;
     $checker => $checker_module,
     $testlib_checker => $checker_module,
     $partial_checker => $checker_module,
-    $validator => $validator_module
+    $validator => $validator_module,
+    $formal => $formal_module
 );
 
 # Values for reqs.state.
