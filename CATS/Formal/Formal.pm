@@ -86,14 +86,14 @@ sub part_copy {
 sub validate {
     my ($descriptions, $validate, $opt) = @_;
     $opt ||= {};
-    my $fd_is = set_all($opt->{fd} || $opt->{all} || 'files');
+    my $fd_is = set_all($opt->{fd} || $opt->{all} || 'file');
     part_copy($opt, $fd_is, ['input_fd', 'output_fd', 'answer_fd'], ['INPUT', 'OUTPUT', 'ANSWER']);
     my $fd_root = parse_descriptions($fd_is, %$descriptions);
     unless ($fd_root) {
         my $error = CATS::Formal::Error::get();
         return $error;
     }
-    my $data_is = set_all($opt->{data} || $opt->{all} || 'files');
+    my $data_is = set_all($opt->{data} || $opt->{all} || 'file');
     part_copy($opt, $data_is, ['input_data', 'output_data', 'answer_data'], ['INPUT', 'OUTPUT', 'ANSWER']);
     eval {
         CATS::Formal::UniversalValidator->new()->validate($fd_root, $data_is, %$validate);
@@ -104,8 +104,9 @@ sub validate {
 
 sub generate {
     my ($fds, $gen_id, $out, $opt) = @_;
+    $opt ||= {};
     $out ||= \*STDOUT;
-    my $fd_is = set_all($opt->{fd} || $opt->{all} || 'files');
+    my $fd_is = set_all($opt->{fd} || $opt->{all} || 'file');
     part_copy($opt, $fd_is, ['input_fd', 'output_fd', 'answer_fd'], ['INPUT', 'OUTPUT', 'ANSWER']);
     my $res = generate_source($gen_id, $fd_is, %$fds);
     unless ($res->{error}) {
