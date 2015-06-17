@@ -42,6 +42,7 @@ sub module_types()
     'solution' => $cats::solution_module,
     'generator' => $cats::generator_module,
     'validator' => $cats::validator_module,
+    'formal' => $cats::formal_module,
 }}
 
 
