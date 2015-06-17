@@ -67,6 +67,7 @@ sub tag_handlers()
     Checker => { s => \&start_tag_Checker, r => ['src'] },
     Generator => { s => \&start_tag_Generator, r => ['src', 'name'] },
     Validator => { s => \&start_tag_Validator, r => ['src', 'name'] },
+    Formal => { s => \&start_tag_Formal, e => \&end_stml, r => ['name']},
     GeneratorRange => {
         s => \&start_tag_GeneratorRange, r => ['src', 'name', 'from', 'to'] },
     Module => { s => \&start_tag_Module, r => ['src', 'de_code', 'type'] },
@@ -168,6 +169,22 @@ sub create_validator
     return $self->set_named_object($p->{name}, {
         $self->problem_source_common_params($p, 'validator')
     });
+}
+
+sub create_formal
+{
+	(my CATS::Problem::Parser $self, my $p) = @_;
+	
+	my @src = $p->{src} &&
+		$self->read_member_named(name => $p->{src}, kind => 'formal description');
+	
+	return $self->set_named_object($p->{name}, {
+		id => $self->{id_gen}->($self),
+        @src,
+        de_code => 4,
+        guid => $p->{export},
+        type => $cats::formal
+	});
 }
 
 sub validate
@@ -408,6 +425,16 @@ sub start_tag_Validator
 {
     (my CATS::Problem::Parser $self, my $atts) = @_;
     push @{$self->{problem}{validators}}, $self->create_validator($atts);
+}
+
+sub start_tag_Formal
+{
+	(my CATS::Problem::Parser $self, my $atts) = @_;
+	my $fd = $self->create_formal_description($atts);
+	push @{$self->{problem}{formals}}, $fd;
+	unless ($fd->{src}) {
+    	$self->{stml} = \$fd->{src};
+    }
 }
 
 sub start_tag_GeneratorRange
