@@ -542,28 +542,34 @@ sub start_tag_Sample
 sub end_tag_Sample
 {
     my CATS::Problem::Parser $self = shift;
+    my $error = $self->validate_test_by_formal($self->{current_sample});
+    $self->error("$error for sample $self->{current_sample}->{rank}") if $error;
+    $self->test_validators_to_ids($self->{current_sample});
     undef $self->{current_sample};
 }
 
 sub sample_in_out
 {
     my CATS::Problem::Parser $self = shift;
-    my ($atts, $in_out) = @_;
+    my ($atts, $in_out, $validator) = @_;
     if (my $src = $atts->{src}) {
         $self->{current_sample}->{$in_out} = $self->{source}->read_member($src, "Invalid sample $in_out reference: '$src'");
     } else {
         $self->{stml} = \$self->{current_sample}->{$in_out};
     }
+    if (my $validator_name = $atts->{validate}){
+        $self->{current_sample}->{$validator} = $self->get_object_by_name($validator_name);
+    }
 }
 
 sub start_tag_SampleIn
 {
-    $_[0]->sample_in_out($_[1], 'in_file');
+    $_[0]->sample_in_out($_[1], 'in_file', 'input_validator');
 }
 
 sub start_tag_SampleOut
 {
-    $_[0]->sample_in_out($_[1], 'out_file');
+    $_[0]->sample_in_out($_[1], 'out_file', 'output_validator');
 }
 
 sub start_tag_Keyword

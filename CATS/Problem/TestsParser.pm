@@ -31,47 +31,32 @@ sub get_formal_validator
     undef;
 }
 
-sub validate_by_formal
-{
-    CATS::Formal::Formal::validate(@_);
-}
-
 sub check_syntax
 {
     CATS::Formal::Formal::check_syntax(@_);
 }
 
-sub validate_test
+sub validate_test_by_formal
 {
     (my CATS::Problem::Parser $self, my $test) = @_;
-    defined $test->{in_file} || $test->{generator_id}
-        or return 'No input source';
-    defined $test->{in_file} && $test->{generator_id}
-        and return 'Both input file and generator';
-    (defined $test->{param} && $test->{param} ne '' || $test->{gen_group}) && !$test->{generator_id}
-        and return 'Parameters without generator';
-    defined $test->{out_file} || $test->{std_solution_id}
-        or return 'No output source';
-    defined $test->{out_file} && $test->{std_solution_id}
-        and return 'Both output file and standard solution';
     my $formal_input = get_formal_validator($test->{input_validator});
     my $formal_output = get_formal_validator($test->{output_validator});
     if ($test->{in_file} && $formal_input){
         if ($test->{out_file} && $formal_output){
-            return validate_by_formal(
+            return CATS::Formal::Formal::validate(
                 {INPUT => $self->get_src($formal_input), OUTPUT => $self->get_src($formal_output)},
                 {INPUT => $test->{in_file}, OUTPUT => $test->{out_file}},
                 {all => 'text'}
             );
         }
-        return validate_by_formal(
+        return CATS::Formal::Formal::validate(
             {INPUT => $self->get_src($formal_input)}, {INPUT => $test->{in_file}}, {all => 'text'}
         ) || $formal_output && check_syntax(
             {INPUT => $self->get_src($formal_input), OUTPUT => $self->get_src($formal_output)},
             {all => 'text'}
         );
     } elsif ($test->{out_file} && $formal_output) {
-        return validate_by_formal(
+        return CATS::Formal::Formal::validate(
             {OUTPUT => $self->get_src($formal_output)}, {OUTPUT => $test->{out_file}}, {all => 'text'}
         ) || $formal_input && check_syntax(
             {INPUT => $self->get_src($formal_input), OUTPUT => $self->get_src($formal_output)},
@@ -93,12 +78,35 @@ sub validate_test
             {all => 'text'}
         );
     }
+}
+
+sub test_validators_to_ids
+{
+    (my CATS::Problem::Parser $self, my $test) = @_;
     my $in_v = $test->{input_validator};
     my $out_v = $test->{output_validator};
     $in_v && ($test->{input_validator_id} = $in_v->{src_id} || $in_v->{id});
     $out_v && ($test->{output_validator_id} = $out_v->{src_id} || $out_v->{id});
     undef $test->{input_validator};
     undef $test->{output_validator};
+}
+
+sub validate_test
+{
+    (my CATS::Problem::Parser $self, my $test) = @_;
+    defined $test->{in_file} || $test->{generator_id}
+        or return 'No input source';
+    defined $test->{in_file} && $test->{generator_id}
+        and return 'Both input file and generator';
+    (defined $test->{param} && $test->{param} ne '' || $test->{gen_group}) && !$test->{generator_id}
+        and return 'Parameters without generator';
+    defined $test->{out_file} || $test->{std_solution_id}
+        or return 'No output source';
+    defined $test->{out_file} && $test->{std_solution_id}
+        and return 'Both output file and standard solution';
+    my $err = $self->validate_test_by_formal($test);
+    $err && return $err;
+    $self->test_validators_to_ids($test);
     undef;
 }
 
