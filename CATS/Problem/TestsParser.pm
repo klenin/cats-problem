@@ -4,6 +4,7 @@ use strict;
 use warnings;
 
 use CATS::Testset;
+use CATS::Formal::Formal;
 
 use CATS::Constants;
 
