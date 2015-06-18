@@ -57,9 +57,9 @@ sub prepare_testlib_validator {
     my ($file) = @_;
     my ($name, $dir, $suffix) = fileparse($file, '.fd');
     CATS::Formal::Formal::generate_and_write(
-        {'INPUT' => $file}, 'testlib_validator', "$dir$name.cpp"   
+        {'INPUT' => $file}, 'testlib_validator', "$dir$name.cpp"
     );
-    my $compile = 
+    my $compile =
         "g++ -enable-auto-import -o $dir$name.exe $dir$name.cpp";
     print "compiling... $file -> testlib\n";
     system($compile);
@@ -79,7 +79,7 @@ sub testlib_validate {
 
 sub prepare_universal_validator {
     return {
-        INPUT => $_[0] 
+        INPUT => $_[0]
     };
 }
 
