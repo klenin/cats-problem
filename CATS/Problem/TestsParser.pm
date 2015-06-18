@@ -5,6 +5,7 @@ use warnings;
 
 use CATS::Testset;
 
+use CATS::Constants;
 
 sub apply_test_rank
 {
@@ -18,9 +19,30 @@ sub apply_test_rank
     $v;
 }
 
+sub get_formal_validator
+{
+    my ($validator) = @_;
+    my $formal_validator = $validator || {};
+    defined $formal_validator->{type} && (
+            $formal_validator->{type} == $cats::formal ||
+               $formal_validator->{type} == $cats::formal_module
+        ) && return $formal_validator;
+    undef;
+}
+
+sub validate_by_formal
+{
+    CATS::Formal::Formal::validate(@_);
+}
+
+sub check_syntax
+{
+    CATS::Formal::Formal::check_syntax(@_);
+}
+
 sub validate_test
 {
-    my ($test) = @_;
+    (my CATS::Problem::Parser $self, my $test) = @_;
     defined $test->{in_file} || $test->{generator_id}
         or return 'No input source';
     defined $test->{in_file} && $test->{generator_id}
@@ -31,6 +53,51 @@ sub validate_test
         or return 'No output source';
     defined $test->{out_file} && $test->{std_solution_id}
         and return 'Both output file and standard solution';
+    my $formal_input = get_formal_validator($test->{input_validator});
+    my $formal_output = get_formal_validator($test->{output_validator});
+    if ($test->{in_file} && $formal_input){
+        if ($test->{out_file} && $formal_output){
+            return validate_by_formal(
+                {INPUT => $self->get_src($formal_input), OUTPUT => $self->get_src($formal_output)},
+                {INPUT => $test->{in_file}, OUTPUT => $test->{out_file}},
+                {all => 'text'}
+            );
+        }
+        return validate_by_formal(
+            {INPUT => $self->get_src($formal_input)}, {INPUT => $test->{in_file}}, {all => 'text'}
+        ) || $formal_output && check_syntax(
+            {INPUT => $self->get_src($formal_input), OUTPUT => $self->get_src($formal_output)},
+            {all => 'text'}
+        );
+    } elsif ($test->{out_file} && $formal_output) {
+        return validate_by_formal(
+            {OUTPUT => $self->get_src($formal_output)}, {OUTPUT => $test->{out_file}}, {all => 'text'}
+        ) || $formal_input && check_syntax(
+            {INPUT => $self->get_src($formal_input), OUTPUT => $self->get_src($formal_output)},
+            {all => 'text'}
+        );
+    } elsif ($formal_input && $formal_output){
+        return check_syntax(
+            {INPUT => $self->get_src($formal_input), OUTPUT => $self->get_src($formal_output)},
+            {all => 'text'}
+        );
+    } elsif ($formal_input){
+        return check_syntax(
+            {INPUT => $self->get_src($formal_input)},
+            {all => 'text'}
+        );
+    } elsif ($formal_output){
+        return check_syntax(
+            {OUTPUT => $self->get_src($formal_output)},
+            {all => 'text'}
+        );
+    }
+    my $in_v = $test->{input_validator};
+    my $out_v = $test->{output_validator};
+    $in_v && ($test->{input_validator_id} = $in_v->{src_id} || $in_v->{id});
+    $out_v && ($test->{output_validator_id} = $out_v->{src_id} || $out_v->{id});
+    undef $test->{input_validator};
+    undef $test->{output_validator};
     undef;
 }
 
@@ -141,8 +208,8 @@ sub start_tag_In
     if (defined $atts->{validate}) {
         for (@t) {
             my $validate = apply_test_rank($atts->{validate}, $_->{rank});
-            $self->set_test_attr($_, 'input_validator_id',
-                $self->get_imported_id($validate) || $self->get_named_object($validate)->{id});
+            $self->set_test_attr($_, 'input_validator',
+                $self->get_object_by_name($validate));
         }
     }
 }
@@ -165,13 +232,20 @@ sub start_tag_Out
             $self->set_test_attr($_, 'std_solution_id', $self->get_named_object($use)->{id});
         }
     }
+    if (defined $atts->{validate}) {
+        for (@t) {
+            my $validate = apply_test_rank($atts->{validate}, $_->{rank});
+            $self->set_test_attr($_, 'output_validator',
+                $self->get_object_by_name($validate));
+        }
+    }
 }
 
 sub apply_test_defaults
 {
     my CATS::Problem::Parser $self = shift;
     my $d = $self->{test_defaults};
-    for my $attr (qw(generator_id input_validator_id param std_solution_id points gen_group)) {
+    for my $attr (qw(generator_id input_validator_id output_validator_id param std_solution_id points gen_group)) {
         $d->{$attr} or next;
         $_->{$attr} ||= $d->{$attr} for values %{$self->{problem}{tests}};
     }

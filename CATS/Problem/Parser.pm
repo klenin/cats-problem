@@ -117,6 +117,22 @@ sub get_named_object
     return $self->{objects}->{$name};
 }
 
+sub get_imported_object
+{
+    (my CATS::Problem::Parser $self, my $name) = @_;
+
+    for (@{$self->{problem}{imports}}){
+        return $_ if $name eq ($_->{name} || '');
+    }
+    undef;
+}
+
+sub get_object_by_name
+{
+    my @a = @_;
+    get_imported_object(@a) || get_named_object(@a);
+}
+
 sub get_imported_id
 {
     (my CATS::Problem::Parser $self, my $name) = @_;
@@ -125,6 +141,15 @@ sub get_imported_id
         return $_->{src_id} if $name eq ($_->{name} || '');
     }
     undef;
+}
+
+sub get_src
+{
+    (my CATS::Problem::Parser $self, my $obj) = @_;
+    $obj || return undef;
+    defined $obj->{src} && return $obj->{src};
+    my @info = $self->{import_source}->get_sources_info([$obj->{guid}]);
+    return $obj->{src} = $info[0]->{src};
 }
 
 sub read_member_named
@@ -173,18 +198,19 @@ sub create_validator
 
 sub create_formal
 {
-	(my CATS::Problem::Parser $self, my $p) = @_;
-	
-	my @src = $p->{src} &&
-		$self->read_member_named(name => $p->{src}, kind => 'formal description');
-	
-	return $self->set_named_object($p->{name}, {
-		id => $self->{id_gen}->($self),
-        @src,
+    (my CATS::Problem::Parser $self, my $p) = @_;
+
+    my $obj = {
+        id => $self->{id_gen}->($self),
         de_code => 4,
         guid => $p->{export},
-        type => $cats::formal
-	});
+        type => $cats::formal,
+    };
+    if($p->{src}){
+        $obj->{src} = $self->{source}->read_member($p->{src}, "Invalid formal reference: '$p->{src}'");
+        $obj->{path} = $p->{src};
+    }
+    return $self->set_named_object($p->{name}, $obj);
 }
 
 sub validate
@@ -203,7 +229,7 @@ sub validate
     $check_order->($problem->{tests}, 'test');
     my @t = values %{$problem->{tests}};
     for (sort {$a->{rank} <=> $b->{rank}} @t) {
-        my $error = validate_test($_) or next;
+        my $error = $self->validate_test($_) or next;
         $self->error("$error for test $_->{rank}");
     }
     my @without_points = map $_->{rank}, grep !defined $_->{points}, @t;
@@ -429,11 +455,11 @@ sub start_tag_Validator
 
 sub start_tag_Formal
 {
-	(my CATS::Problem::Parser $self, my $atts) = @_;
-	my $fd = $self->create_formal_description($atts);
-	push @{$self->{problem}{formals}}, $fd;
-	unless ($fd->{src}) {
-    	$self->{stml} = \$fd->{src};
+    (my CATS::Problem::Parser $self, my $atts) = @_;
+    my $fd = $self->create_formal($atts);
+    push @{$self->{problem}{formals}}, $fd;
+    unless ($fd->{src}) {
+        $self->{stml} = \$fd->{src};
     }
 }
 
