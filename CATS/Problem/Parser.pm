@@ -49,40 +49,47 @@ sub get_zip
 }
 
 sub tag_handlers()
-{{
-    CATS => { s => sub {}, r => ['version'] },
-    ProblemStatement => { stml_handlers('statement') },
-    ProblemConstraints => { stml_handlers('constraints') },
-    InputFormat => { stml_handlers('input_format') },
-    OutputFormat => { stml_handlers('output_format') },
-    FormalInput => { stml_handlers('formal_input'), e => \&end_tag_FormalInput },
-    JsonData => { stml_handlers('json_data'), e => \&end_tag_JsonData },
-    Explanation => { stml_handlers('explanation') },
-    Problem => {
-        s => \&start_tag_Problem, e => \&end_tag_Problem,
-        r => ['title', 'lang', 'tlimit', 'inputFile', 'outputFile'], },
-    Attachment => { s => \&start_tag_Attachment, r => ['src', 'name'] },
-    Picture => { s => \&start_tag_Picture, r => ['src', 'name'] },
-    Solution => { s => \&start_tag_Solution, r => ['src', 'name'] },
-    Checker => { s => \&start_tag_Checker, r => ['src'] },
-    Generator => { s => \&start_tag_Generator, r => ['src', 'name'] },
-    Validator => { s => \&start_tag_Validator, r => ['src', 'name'] },
-    GeneratorRange => {
-        s => \&start_tag_GeneratorRange, r => ['src', 'name', 'from', 'to'] },
-    Module => { s => \&start_tag_Module, r => ['src', 'de_code', 'type'] },
-    Import => { s => \&start_tag_Import, r => ['guid'] },
-    Test => { s => \&start_tag_Test, e => \&end_tag_Test, r => ['rank'] },
-    TestRange => {
-        s => \&start_tag_TestRange, e => \&end_tag_Test, r => ['from', 'to'] },
-    In => { s => \&start_tag_In, in => ['Test', 'TestRange'] },
-    Out => { s => \&start_tag_Out, in => ['Test', 'TestRange'] },
-    Sample => { s => \&start_tag_Sample, e => \&end_tag_Sample, r => ['rank'] },
-    SampleIn => { s => \&start_tag_SampleIn, e => \&end_stml, in => ['Sample'] },
-    SampleOut => { s => \&start_tag_SampleOut, e => \&end_stml, in => ['Sample'] },
-    Keyword => { s => \&start_tag_Keyword, r => ['code'] },
-    Testset => { s => \&start_tag_Testset, r => ['name', 'tests'] },
-    Run => { s => \&start_tag_Run, r => ['method'] },
-}}
+{
+    my %stml_tags = (
+        ProblemStatement =>     { p => [ 'statement', 'view_problem' ] },
+        ProblemConstraints =>   { p => [ 'constraints', 'view_problem' ] },
+        InputFormat =>          { p => [ 'input_format', 'view_problem' ] },
+        OutputFormat =>         { p => [ 'output_format', 'view_problem' ] },
+        FormalInput =>          { p => [ 'formal_input' ], e => \&end_tag_FormalInput },
+        JsonData =>             { p => [ 'json_data' ], e => \&end_tag_JsonData },
+        Explanation =>          { p => [ 'explanation', 'view_explanation' ] },
+    );
+    $_->{s} ||= \&start_stml_tag and $_->{e} ||= \&end_stml_tag for values %stml_tags;
+
+    {
+        CATS => { s => sub {}, r => ['version'] },
+        %stml_tags,
+        Problem => {
+            s => \&start_tag_Problem, e => \&end_tag_Problem,
+            r => ['title', 'lang', 'tlimit', 'inputFile', 'outputFile'], },
+        Attachment => { s => \&start_tag_Attachment, r => ['src', 'name'] },
+        Picture => { s => \&start_tag_Picture, r => ['src', 'name'] },
+        Solution => { s => \&start_tag_Solution, r => ['src', 'name'] },
+        Checker => { s => \&start_tag_Checker, r => ['src'] },
+        Generator => { s => \&start_tag_Generator, r => ['src', 'name'] },
+        Validator => { s => \&start_tag_Validator, r => ['src', 'name'] },
+        GeneratorRange => {
+            s => \&start_tag_GeneratorRange, r => ['src', 'name', 'from', 'to'] },
+        Module => { s => \&start_tag_Module, r => ['src', 'de_code', 'type'] },
+        Import => { s => \&start_tag_Import, r => ['guid'] },
+        Test => { s => \&start_tag_Test, e => \&end_tag_Test, r => ['rank'] },
+        TestRange => {
+            s => \&start_tag_TestRange, e => \&end_tag_Test, r => ['from', 'to'] },
+        In => { s => \&start_tag_In, in => ['Test', 'TestRange'] },
+        Out => { s => \&start_tag_Out, in => ['Test', 'TestRange'] },
+        Sample => { s => \&start_tag_Sample, e => \&end_tag_Sample, r => ['rank'] },
+        SampleIn => { s => \&start_tag_SampleIn, e => \&end_stml_tag, in => ['Sample'] },
+        SampleOut => { s => \&start_tag_SampleOut, e => \&end_stml_tag, in => ['Sample'] },
+        Keyword => { s => \&start_tag_Keyword, r => ['code'] },
+        Testset => { s => \&start_tag_Testset, r => ['name', 'tests'] },
+        Run => { s => \&start_tag_Run, r => ['method'] },
+    }
+}
 
 sub required_attributes
 {
@@ -201,27 +208,36 @@ sub validate
     $problem->{has_checker} or $self->error('No checker specified');
 }
 
+sub inc_object_ref_count
+{
+    (my CATS::Problem::Parser $self, my $name) = @_;
+
+    defined $name or return undef;
+    my $obj = $self->get_named_object($name);
+    $obj->{refcount}++;
+    return $obj;
+}
+
 sub on_start_tag
 {
     my CATS::Problem::Parser $self = shift;
     my ($p, $el, %atts) = @_;
 
-    if ($self->{stml}) {
+    if (my $stml = $self->{stml}) {
         if ($el eq 'include') {
             my $name = $atts{src} or
                 return $self->error(q~Missing required 'src' attribute of 'include' tag~);
-            ${$self->{stml}} .= Encode::decode($self->{problem}{encoding}, $self->{source}->read_member($name, "Invalid 'include' reference: '$name'"));
+            ${$stml} .= Encode::decode($self->{problem}{encoding}, $self->{source}->read_member($name, "Invalid 'include' reference: '$name'"));
             return;
         }
-        ${$self->{stml}} .=
+        ${$stml} .=
             "<$el" . join ('', map qq~ $_="$atts{$_}"~, keys %atts) . '>';
-        if ($el eq 'img') {
-            $atts{picture} or $self->error('Picture not defined in img element');
-            $self->get_named_object($atts{picture})->{refcount}++;
-        }
-        elsif ($el =~ /^a|object$/) {
-            $self->get_named_object($atts{attachment})->{refcount}++ if $atts{attachment};
-        }
+
+        $el ne 'img' || $atts{picture} or 
+            $self->error('Picture not defined in img element');
+
+        $self->inc_object_ref_count({
+            img => 'picture', a => 'attachment', object => 'attachment' }->{$el});
         return;
     }
 
@@ -232,7 +248,7 @@ sub on_start_tag
     }
     $self->required_attributes($el, \%atts, $h->{r}) if $h->{r};
     push @{$self->{tag_stack}}, $el;
-    $h->{s}->($self, \%atts, $el);
+    $h->{s}->($self, \%atts, $el, $h->{p});
 }
 
 sub on_end_tag
@@ -241,7 +257,7 @@ sub on_end_tag
     my ($p, $el, %atts) = @_;
 
     my $h = tag_handlers()->{$el};
-    $h->{e}->($self, \%atts, $el) if $h && $h->{e};
+    $h->{e}->($self, \%atts, $el, $h->{p}) if $h && $h->{e};
     pop @{$self->{tag_stack}};
 
     if ($self->{stml}) {
@@ -253,15 +269,37 @@ sub on_end_tag
     }
 }
 
-sub stml_handlers
+sub start_stml_tag
 {
-    my $v = $_[0];
-    ( s => sub { $_[0]->{stml} = \$_[0]->{problem}->{$v} }, e => \&end_stml );
+    my CATS::Problem::Parser $self = shift;
+    my ($attr, $el, $param) = @_;
+
+    my $problem = $self->{problem};
+    my ($v, $view_name) = @{$param};
+
+    
+    for (qw(File Http)) {
+        if (my $n = $attr->{"view$_"}) {
+            $problem->{description}->{$view_name} and
+                $self->error("Several resources to $view_name");
+            $problem->{description}->{$view_name} = lc($_) . "://$n" if $n;
+            $self->inc_object_ref_count($n) if $_ eq 'File';
+        }
+    }
+    $self->{stml} = \$self->{problem}->{$v};
 }
 
-sub end_stml
+sub end_stml_tag
 {
-    undef $_[0]->{stml}
+    my CATS::Problem::Parser $self = shift;
+    my ($attr, $el, $param) = @_;
+
+    if ($param) {
+        my ($v, $view_name) = @{$param};
+        $self->{problem}->{description}->{$view_name} && ${$self->{stml}} and
+            $self->error("Both stml $v and href to $view_name")
+    }
+    undef $self->{stml}
 }
 
 sub end_tag_FormalInput
@@ -276,7 +314,7 @@ sub end_tag_FormalInput
     } else {
         $self->note('FormalInput OK.');
     }
-    $self->end_stml;
+    $self->end_stml_tag;
 }
 
 sub end_tag_JsonData
@@ -289,7 +327,7 @@ sub end_tag_JsonData
     } else {
         $self->note('JsonData OK.');
     }
-    $self->end_stml;
+    $self->end_stml_tag;
 }
 
 sub start_tag_Problem
@@ -310,6 +348,7 @@ sub start_tag_Problem
         std_checker => $atts->{stdChecker},
         max_points => $atts->{maxPoints},
     };
+
     for ($problem->{description}{memory_limit}) {
         last if defined $_;
         $_ = 200;
