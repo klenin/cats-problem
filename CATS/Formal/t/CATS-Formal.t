@@ -4,8 +4,8 @@ use File::Basename;
 use File::Compare;
 use File::Spec;
 use File::Slurp;
-
-use lib '..'; 
+use Cwd qw(abs_path);
+use lib dirname(dirname(dirname(dirname(abs_path($0)))));
 my $clear = 0;
 my @tests;
 BEGIN {
@@ -57,9 +57,9 @@ sub prepare_testlib_validator {
     my ($file) = @_;
     my ($name, $dir, $suffix) = fileparse($file, '.fd');
     CATS::Formal::Formal::generate_and_write(
-        {'INPUT' => $file}, 'testlib_validator', "$dir$name.cpp"   
+        {'INPUT' => $file}, 'testlib_validator', "$dir$name.cpp"
     );
-    my $compile = 
+    my $compile =
         "g++ -enable-auto-import -o $dir$name.exe $dir$name.cpp";
     print "compiling... $file -> testlib\n";
     system($compile);
@@ -79,7 +79,7 @@ sub testlib_validate {
 
 sub prepare_universal_validator {
     return {
-        INPUT => $_[0] 
+        INPUT => $_[0]
     };
 }
 
@@ -141,8 +141,8 @@ sub run_validator_tests{
     }
 }
 
-BEGIN {use_ok('Formal')};
-require_ok('Formal');
+BEGIN {use_ok('CATS::Formal::Formal')};
+require_ok('CATS::Formal::Formal');
 
 $_->{run}->($_) for @tests;
 

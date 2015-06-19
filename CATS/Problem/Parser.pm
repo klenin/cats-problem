@@ -67,6 +67,7 @@ sub tag_handlers()
     Checker => { s => \&start_tag_Checker, r => ['src'] },
     Generator => { s => \&start_tag_Generator, r => ['src', 'name'] },
     Validator => { s => \&start_tag_Validator, r => ['src', 'name'] },
+    Formal => { s => \&start_tag_Formal, e => \&end_stml, r => ['name']},
     GeneratorRange => {
         s => \&start_tag_GeneratorRange, r => ['src', 'name', 'from', 'to'] },
     Module => { s => \&start_tag_Module, r => ['src', 'de_code', 'type'] },
@@ -116,6 +117,22 @@ sub get_named_object
     return $self->{objects}->{$name};
 }
 
+sub get_imported_object
+{
+    (my CATS::Problem::Parser $self, my $name) = @_;
+
+    for (@{$self->{problem}{imports}}){
+        return $_ if $name eq ($_->{name} || '');
+    }
+    undef;
+}
+
+sub get_object_by_name
+{
+    my @a = @_;
+    get_imported_object(@a) || get_named_object(@a);
+}
+
 sub get_imported_id
 {
     (my CATS::Problem::Parser $self, my $name) = @_;
@@ -124,6 +141,15 @@ sub get_imported_id
         return $_->{src_id} if $name eq ($_->{name} || '');
     }
     undef;
+}
+
+sub get_src
+{
+    (my CATS::Problem::Parser $self, my $obj) = @_;
+    $obj || return undef;
+    defined $obj->{src} && return $obj->{src};
+    my @info = $self->{import_source}->get_sources_info([$obj->{guid}]);
+    return $obj->{src} = $info[0]->{src};
 }
 
 sub read_member_named
@@ -170,6 +196,23 @@ sub create_validator
     });
 }
 
+sub create_formal
+{
+    (my CATS::Problem::Parser $self, my $p) = @_;
+
+    my $obj = {
+        id => $self->{id_gen}->($self),
+        de_code => 4,
+        guid => $p->{export},
+        type => $cats::formal,
+    };
+    if($p->{src}){
+        $obj->{src} = $self->{source}->read_member($p->{src}, "Invalid formal reference: '$p->{src}'");
+        $obj->{path} = $p->{src};
+    }
+    return $self->set_named_object($p->{name}, $obj);
+}
+
 sub validate
 {
     my CATS::Problem::Parser $self = shift;
@@ -186,7 +229,7 @@ sub validate
     $check_order->($problem->{tests}, 'test');
     my @t = values %{$problem->{tests}};
     for (sort {$a->{rank} <=> $b->{rank}} @t) {
-        my $error = validate_test($_) or next;
+        my $error = $self->validate_test($_) or next;
         $self->error("$error for test $_->{rank}");
     }
     my @without_points = map $_->{rank}, grep !defined $_->{points}, @t;
@@ -410,6 +453,16 @@ sub start_tag_Validator
     push @{$self->{problem}{validators}}, $self->create_validator($atts);
 }
 
+sub start_tag_Formal
+{
+    (my CATS::Problem::Parser $self, my $atts) = @_;
+    my $fd = $self->create_formal($atts);
+    push @{$self->{problem}{formals}}, $fd;
+    unless ($fd->{src}) {
+        $self->{stml} = \$fd->{src};
+    }
+}
+
 sub start_tag_GeneratorRange
 {
     (my CATS::Problem::Parser $self, my $atts) = @_;
@@ -489,28 +542,34 @@ sub start_tag_Sample
 sub end_tag_Sample
 {
     my CATS::Problem::Parser $self = shift;
+    my $error = $self->validate_test_by_formal($self->{current_sample});
+    $self->error("$error for sample $self->{current_sample}->{rank}") if $error;
+    $self->test_validators_to_ids($self->{current_sample});
     undef $self->{current_sample};
 }
 
 sub sample_in_out
 {
     my CATS::Problem::Parser $self = shift;
-    my ($atts, $in_out) = @_;
+    my ($atts, $in_out, $validator) = @_;
     if (my $src = $atts->{src}) {
         $self->{current_sample}->{$in_out} = $self->{source}->read_member($src, "Invalid sample $in_out reference: '$src'");
     } else {
         $self->{stml} = \$self->{current_sample}->{$in_out};
     }
+    if (my $validator_name = $atts->{validate}){
+        $self->{current_sample}->{$validator} = $self->get_object_by_name($validator_name);
+    }
 }
 
 sub start_tag_SampleIn
 {
-    $_[0]->sample_in_out($_[1], 'in_file');
+    $_[0]->sample_in_out($_[1], 'in_file', 'input_validator');
 }
 
 sub start_tag_SampleOut
 {
-    $_[0]->sample_in_out($_[1], 'out_file');
+    $_[0]->sample_in_out($_[1], 'out_file', 'output_validator');
 }
 
 sub start_tag_Keyword

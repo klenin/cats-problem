@@ -18,6 +18,12 @@ BEGIN {
 # db_user - username, used in connection to DB
 # db_password - password, used in connection to DB
 
+our $cats_dir;
+sub cats_dir()
+{
+    $cats_dir ||= $ENV{CATS_DIR} || '/usr/local/apache/CATS/cgi-bin/';
+}
+
 our $db_dsn = 'dbi:Firebird:dbname=<path-to-your-database>;host=<your-host>;ib_charset=UTF8;';
 our $db_user = '<your-username>';
 our $db_password = '<your-password>';
@@ -25,11 +31,5 @@ our $db_password = '<your-password>';
 our $proxy = '<your-proxy-server>';
 
 our $repos_dir = cats_dir() . 'repos/';
-
-our $cats_dir;
-sub cats_dir()
-{
-    $cats_dir ||= $ENV{CATS_DIR} || '/usr/local/apache/CATS/cgi-bin/';
-}
 
 1;
