@@ -166,9 +166,12 @@ sub create_generator
 {
     (my CATS::Problem::Parser $self, my $p) = @_;
 
+    defined $p->{formal} && $self->inc_object_ref_count($p->{formal}, 'formal');
+
     return $self->set_named_object($p->{name}, {
         $self->problem_source_common_params($p, 'generator'),
         outputFile => $p->{outputFile},
+            formal => $p->{formal}
     });
 }
 
