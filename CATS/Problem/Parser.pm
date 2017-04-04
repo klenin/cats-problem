@@ -205,7 +205,8 @@ sub create_formal
         id => $self->{id_gen}->($self),
         guid => $p->{export},
         type => $cats::formal,
-        name => $p->{name}
+        name => $p->{name},
+        kind => 'formal'
     };
     if (scalar @src > 1){
         $object = {%$object, @src};
