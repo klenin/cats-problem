@@ -2,7 +2,7 @@ use strict;
 use warnings;
 
 use FindBin;
-use Test::More tests => 14;
+use Test::More tests => 15;
 use Test::Exception;
 
 use lib '..';
@@ -690,3 +690,92 @@ subtest 'interactor', sub {
     $parser->parse;
     is @{$parser->logger->{warnings}}, 0, 'interactor inverse tag definition';
 };
+
+subtest 'formal_input', sub {
+    plan tests => 12;
+    throws_ok { parse({
+        'test.xml' => wrap_problem(q~<FormalInput/>~),
+    })} qr/FormalInput.name/, 'formal input no name';
+
+
+    throws_ok { parse({
+        'test.xml' => wrap_problem(q~<FormalInput name="input"/>~),
+    })} qr/'FormalInput' tag without formal description/, 'formal input empty';
+    throws_ok{ parse ({
+        'test.xml' => wrap_problem(q~
+            <FormalInput name="input" src="input.fd">
+                integer name=A;
+            </FormalInput>
+            <Checker src="t.pp"/>
+        ~),
+        't.pp' => 'q',
+        'input.fd' => "integer name=B;"
+    })} qr/'src' used along with inline description, remove 'src' attribute or inline description/, 'formal input with src and inline code';
+
+    throws_ok{ parse ({
+        'test.xml' => wrap_problem(q~
+            <Generator name="gen2" src="gen.pp"/>
+            <Generator name="gen" src="gen.pp" formal="gen2"/>
+            <Checker src="t.pp"/>
+        ~),
+        't.pp' => 'q',
+        'gen.pp' => 'q',
+    })} qr/Object 'gen2' is 'generator' instead of 'formal'/, 'formal input wrong type of formal attribute in generator';
+    {
+        my $p = parse({
+            'test.xml'  => wrap_problem(q~
+        <FormalInput name="input">
+            integer name=A;
+        </FormalInput>
+        <FormalInput name="input2" src="input2.fd"/>
+        <Checker src="t.pp"/>~),
+            't.pp'      => 'q',
+            'input2.fd' => 'integer name=B;'
+        });
+        is @{$p->{formals}}, 2, 'formal input count';
+        my $i1 = $p->{formals}->[0];
+        my $i2 = $p->{formals}->[1];
+        is $i1->{name}, 'input', 'formal input inline name';
+        is $i2->{name}, 'input2', 'formal input src name ';
+        is $i1->{src}, "\n            integer name=A;\n        ", 'formal input inline code';
+        is $i2->{src}, "integer name=B;", 'formal input src code';
+        is $p->{formal_input}, $i1->{src}, 'formal input Legacy for EASYGEN --- DEPRECATED';
+    }
+    {
+        my $p = parse ({
+            'test.xml' => wrap_problem(q~
+                <FormalInput name="input">
+                    integer name=A;
+                </FormalInput>
+                <Generator name="gen" src="gen.pp" formal="input"/>
+                <Checker src="t.pp"/>
+            ~),
+            't.pp' => 'q',
+            'gen.pp' => 'q'
+        });
+        my $generator = $p->{generators}->[0];
+        is $generator->{formal}, 'input', 'formal input generator with formal attribute';
+    }
+    {
+        my $p = parse ({
+            'test.xml' => wrap_problem(q~
+                <FormalInput name="input1" src="input.fd"/>
+                <FormalInput name="input2" src="input.fd"/>
+                <FormalInput name="input3" src="input.fd"/>
+                <GeneratorRange from="1" to="3" name="gen%n" src="gen%n.pp" outputFile="*STDOUT" formal="input%n"/>
+                <Checker src="t.pp"/>
+            ~),
+            't.pp' => 'q',
+            'gen1.pp' => 'q',
+            'gen2.pp' => 'q',
+            'gen3.pp' => 'q',
+            'input.fd' => 'integer name=A;'
+        });
+        ok(
+            $p->{generators}->[0]->{formal} eq 'input1' &&
+            $p->{generators}->[1]->{formal} eq 'input2' &&
+            $p->{generators}->[2]->{formal} eq 'input3',
+            'formal input generator range with formal attribute'
+        );
+    }
+}
