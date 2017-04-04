@@ -203,6 +203,7 @@ sub create_formal
 
     my $object = {
         id => $self->{id_gen}->($self),
+        de_code => 1, #do not compile formal
         guid => $p->{export},
         type => $cats::formal,
         name => $p->{name},
