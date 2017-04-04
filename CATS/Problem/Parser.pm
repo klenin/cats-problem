@@ -249,11 +249,33 @@ sub validate
         and $self->warning("Both stml and url for $_") for qw(statement explanation);
     $problem->{has_checker} or $self->error('No checker specified');
 
+
     $problem->{interactor} and $problem->{run_method} != $cats::rm_interactive
         and $self->warning("Interactor defined when run method is not interactive");
 
     $problem->{run_method} == $cats::rm_interactive and !$problem->{interactor}
         and $self->warning("Interactor is not defined when run method is interactive (maybe used legacy interactor definition)");
+
+    my @not_used_formals = grep {!$_->{refcount}} @{$problem->{formals}};
+    for my $fd (@not_used_formals) {
+        $self->warning("not used formal description: $fd->{name}");
+    }
+
+    my @generators_with_formal = do {
+        my %seen;
+        grep { !$seen{$_}++ } grep {defined $_->{formal}} @{$problem->{generators}};
+    };
+    for (@generators_with_formal) {
+        my $error = CATS::Formal::Formal::check_syntax(
+            {INPUT => $self->get_named_object($_->{formal}, 'formal')->{src}},
+            {all => 'inline'}
+        );
+        if ($error) {
+            $self->error($error);
+        } else {
+            $self->note("FormalInput - $_->{name} - OK");
+        }
+    }
 }
 
 sub inc_object_ref_count
