@@ -528,6 +528,7 @@ sub start_tag_GeneratorRange
             name => apply_test_rank($atts->{name}, $_),
             src => apply_test_rank($atts->{src}, $_),
             export => apply_test_rank($atts->{export}, $_),
+            formal => apply_test_rank($atts->{formal}, $_),
             de_code => $atts->{de_code},
             outputFile => $atts->{outputFile},
         });
