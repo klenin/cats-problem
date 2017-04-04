@@ -7,12 +7,10 @@ use Encode;
 use JSON::XS;
 use XML::Parser::Expat;
 
+use CATS::Formal::Formal;
 use CATS::Constants;
 use CATS::Problem;
 use CATS::Utils qw(escape_xml);
-
-my $has_formal_input;
-BEGIN { $has_formal_input = eval { require FormalInput; 1; } }
 
 use CATS::Problem::TestsParser;
 
@@ -65,7 +63,7 @@ sub tag_handlers()
     ProblemConstraints => { stml_handlers('constraints') },
     InputFormat => { stml_handlers('input_format') },
     OutputFormat => { stml_handlers('output_format') },
-    FormalInput => { s => start_stml('formal_input'), e => \&end_tag_FormalInput },
+    FormalInput => { s => \&start_tag_FormalInput, e => \&end_tag_FormalInput, r => ['name'] },
     JsonData => { s => start_stml('json_data'), e => \&end_tag_JsonData },
     Explanation => { stml_src_handlers('explanation') },
     Problem => {
@@ -191,6 +189,26 @@ sub create_visualizer
     return $self->set_named_object($p->{name}, {
         $self->problem_source_common_params($p, 'visualizer')
     });
+}
+
+sub create_formal
+{
+    (my CATS::Problem::Parser $self, my $p) = @_;
+
+    my @src = $p->{src} &&
+        $self->read_member_named(name => $p->{src}, kind => 'formal');
+
+    my $object = {
+        id => $self->{id_gen}->($self),
+        guid => $p->{export},
+        type => $cats::formal,
+        name => $p->{name}
+    };
+    if (scalar @src > 1){
+        $object = {%$object, @src};
+    }
+    return $self->set_named_object($p->{name}, $object);
+
 }
 
 sub validate
@@ -323,19 +341,30 @@ sub stml_src_handlers
     );
 }
 
+sub start_tag_FormalInput
+{
+    (my CATS::Problem::Parser $self, my $atts) = @_;
+    my $val;
+    $self->{stml} = \$val;
+    my $fd = $self->create_formal($atts);
+    push @{$self->{problem}{formals}}, $fd;
+}
+
 sub end_tag_FormalInput
 {
     (my CATS::Problem::Parser $self, my $atts) = @_;
-    $has_formal_input or return $self->warning('Parsing FormalInput tag requires FormalInput module');
-    my $parser_err = FormalInput::parserValidate(${$self->{stml}});
-    if ($parser_err) {
-        my $s = FormalInput::errorMessageByCode(FormalInput::getErrCode($parser_err));
-        my $l = FormalInput::getErrLine($parser_err);
-        my $p = FormalInput::getErrPos($parser_err);
-        $self->error("FormalInput: $s. Line: $l. Pos: $p.");
-    } else {
-        $self->note('FormalInput OK.');
+    my $fd = $self->{problem}{formals}[-1];
+    my $stml = ${$self->{stml}};
+    if ($fd->{src} && $stml) {
+        $self->error("'src' used along with inline description, remove 'src' attribute or inline description")
     }
+    if (!$fd->{src} && !$stml) {
+        $self->error("'FormalInput' tag without formal description");
+    }
+    $fd->{src} //= $stml;
+
+    #Legacy from EASYGEN
+    $self->{problem}{formal_input} //= $fd->{src};
     $self->end_stml;
 }
 
