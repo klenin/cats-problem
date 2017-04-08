@@ -63,7 +63,7 @@ sub tag_handlers()
     ProblemConstraints => { stml_handlers('constraints') },
     InputFormat => { stml_handlers('input_format') },
     OutputFormat => { stml_handlers('output_format') },
-    FormalInput => { s => \&start_tag_FormalInput, e => \&end_tag_FormalInput, r => ['name'] },
+    FormalInput => { s => \&start_tag_FormalInput, e => \&end_tag_FormalInput },
     JsonData => { s => start_stml('json_data'), e => \&end_tag_JsonData },
     Explanation => { stml_src_handlers('explanation') },
     Problem => {
@@ -256,7 +256,7 @@ sub validate
     $problem->{run_method} == $cats::rm_interactive and !$problem->{interactor}
         and $self->warning("Interactor is not defined when run method is interactive (maybe used legacy interactor definition)");
 
-    my @not_used_formals = grep {!$_->{refcount}} @{$problem->{formals}};
+    my @not_used_formals = grep {!$_->{refcount} && $_->{name} ne '__easygen__'} @{$problem->{formals}};
     for my $fd (@not_used_formals) {
         $self->warning("not used formal description: $fd->{name}");
     }
@@ -373,6 +373,10 @@ sub start_tag_FormalInput
     (my CATS::Problem::Parser $self, my $atts) = @_;
     my $val;
     $self->{stml} = \$val;
+    unless (defined $atts->{name}) {
+        $self->warning("using FormalInput without name is DEPRECATED --- Legasy for EasyGen");
+        $atts->{name} = "__easygen__";
+    }
     my $fd = $self->create_formal($atts);
     push @{$self->{problem}{formals}}, $fd;
 }
@@ -380,8 +384,8 @@ sub start_tag_FormalInput
 sub end_tag_FormalInput
 {
     (my CATS::Problem::Parser $self, my $atts) = @_;
-    my $fd = $self->{problem}{formals}[-1];
     my $stml = ${$self->{stml}};
+    my $fd = $self->{problem}{formals}[-1];
     if ($fd->{src} && $stml) {
         $self->error("'src' used along with inline description, remove 'src' attribute or inline description")
     }
@@ -389,9 +393,11 @@ sub end_tag_FormalInput
         $self->error("'FormalInput' tag without formal description");
     }
     $fd->{src} //= $stml;
-
-    #Legacy from EASYGEN
-    $self->{problem}{formal_input} //= $fd->{src};
+    if ($fd->{name} eq '__easygen__') {
+        my $error = CATS::Formal::Formal::check_syntax({INPUT => $fd->{src}}, {all => 'inline'});
+        $error && $self->error($error);
+        $self->{problem}{formal_input} = $fd->{src};
+    }
     $self->end_stml;
 }
 

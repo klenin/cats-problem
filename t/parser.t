@@ -693,9 +693,9 @@ subtest 'interactor', sub {
 
 subtest 'formal_input', sub {
     plan tests => 12;
-    throws_ok { parse({
-        'test.xml' => wrap_problem(q~<FormalInput/>~),
-    })} qr/FormalInput.name/, 'formal input no name';
+#    throws_ok { parse({
+#        'test.xml' => wrap_problem(q~<FormalInput/>~),
+#    })} qr/FormalInput.name/, 'formal input no name';
 
 
     throws_ok { parse({
@@ -724,7 +724,7 @@ subtest 'formal_input', sub {
     {
         my $p = parse({
             'test.xml'  => wrap_problem(q~
-        <FormalInput name="input">
+        <FormalInput name="__easygen__">
             integer name=A;
         </FormalInput>
         <FormalInput name="input2" src="input2.fd"/>
@@ -735,11 +735,18 @@ subtest 'formal_input', sub {
         is @{$p->{formals}}, 2, 'formal input count';
         my $i1 = $p->{formals}->[0];
         my $i2 = $p->{formals}->[1];
-        is $i1->{name}, 'input', 'formal input inline name';
+        is $i1->{name}, '__easygen__', 'formal input inline name';
         is $i2->{name}, 'input2', 'formal input src name ';
         is $i1->{src}, "\n            integer name=A;\n        ", 'formal input inline code';
         is $i2->{src}, "integer name=B;", 'formal input src code';
-        is $p->{formal_input}, $i1->{src}, 'formal input Legacy for EASYGEN --- DEPRECATED';
+        is $p->{formal_input}, $i1->{src}, 'formal input formal_input contains src --- Legacy for EASYGEN';
+    }
+    {
+        my $p = parse({
+            'test.xml' => wrap_problem(q~<FormalInput>integer name=A;</FormalInput><Checker src="t.pp"/>~),
+                't.pp' => 'q'
+        });
+        is $p->{formals}->[0]->{name}, '__easygen__', 'formal input without name --- Legacy for EASYGEN';
     }
     {
         my $p = parse ({
