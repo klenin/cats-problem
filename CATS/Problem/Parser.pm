@@ -79,6 +79,7 @@ sub tag_handlers()
     Generator => { s => \&start_tag_Generator, r => ['src', 'name'] },
     Validator => { s => \&start_tag_Validator, r => ['src', 'name'] },
     Visualizer => { s => \&start_tag_Visualizer, r => ['src', 'name'] },
+    Formal => { s => \&start_tag_Formal, e => \&end_tag_Formal, r => ['name']},
     GeneratorRange => {
         s => \&start_tag_GeneratorRange, r => ['src', 'name', 'from', 'to'] },
     Module => { s => \&start_tag_Module, r => ['src', 'de_code', 'type'] },
@@ -191,6 +192,25 @@ sub create_visualizer
     return $self->set_named_object($p->{name}, {
         $self->problem_source_common_params($p, 'visualizer')
     });
+}
+
+sub create_formal
+{
+    (my CATS::Problem::Parser $self, my $p) = @_;
+
+    my @src = $p->{src} &&
+        $self->read_member_named(name => $p->{src}, kind => 'formal');
+
+    my $object = {
+        @src,
+        id => $self->{id_gen}->($self),
+        guid => $p->{export},
+        type => $cats::formal,
+        name => $p->{name},
+        kind => 'formal',
+        de_code => $cats::formal_de_code
+    };
+    return $self->set_named_object($p->{name}, $object);
 }
 
 sub validate
@@ -508,6 +528,29 @@ sub start_tag_Visualizer
 {
     (my CATS::Problem::Parser $self, my $atts) = @_;
     push @{$self->{problem}{visualizers}}, $self->create_visualizer($atts);
+}
+
+sub start_tag_Formal
+{
+    (my CATS::Problem::Parser $self, my $atts) = @_;
+    $self->{stml} = \my $val;
+    push @{$self->{problem}{formals}}, $self->create_formal($atts);
+}
+
+sub end_tag_Formal
+{
+    (my CATS::Problem::Parser $self, my $atts) = @_;
+    my $fd = $self->{problem}{formals}[-1];
+    my $stml = ${$self->{stml}};
+    if ($fd->{src} && $stml) {
+        $self->error("Redefined attribute 'src' for formal description $fd->{name}")
+    }
+    if (!$fd->{src} && !$stml) {
+        $self->error("'Formal' tag without formal description");
+    }
+    $fd->{src} //= $stml;
+
+    $self->end_stml;
 }
 
 sub start_tag_GeneratorRange
