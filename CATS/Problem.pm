@@ -8,7 +8,7 @@ use CATS::Constants;
 use fields qw(
     contest_id id description checker interactor statement constraints input_format output_format formal_input
     json_data explanation tests testsets samples keywords current_tests
-    imports solutions generators validators visualizers modules pictures attachments encoding
+    imports solutions generators validators visualizers formals modules pictures attachments encoding
     old_title replace repo has_checker run_method
 );
 
@@ -26,7 +26,7 @@ sub clear
     my CATS::Problem $self = shift;
     undef $self->{$_} for keys %CATS::Problem::FIELDS;
     $self->{$_} = {} for qw(tests test_defaults testsets samples keywords);
-    $self->{$_} = [] for qw(imports solutions generators validators visualizers modules pictures attachments);
+    $self->{$_} = [] for qw(imports solutions generators validators visualizers formals modules pictures attachments);
 }
 
 sub checker_type_names()
@@ -44,6 +44,7 @@ sub module_types()
     'validator' => $cats::validator_module,
     'visualizer' => $cats::visualizer_module,
     'interactor' => $cats::interactor_module,
+    'formal' => $cats::formal_module,
 }}
 
 
