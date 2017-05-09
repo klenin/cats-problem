@@ -107,6 +107,14 @@ sub required_attributes
     }
 }
 
+sub add_object_to_id {
+    $_[0]->{id_to_object}->{$_[1]} = $_[2];
+}
+
+sub get_object_by_id {
+    $_[0]->{id_to_object}->{$_[1]};
+}
+
 sub set_named_object
 {
     my CATS::Problem::Parser $self = shift;
@@ -115,6 +123,9 @@ sub set_named_object
     $self->error("Duplicate object reference: '$name'")
         if defined $self->{objects}->{$name};
     $self->{objects}->{$name} = $object;
+    if (my $id = $object->{id}) {
+        $self->add_object_to_id($id, $object);
+    }
 }
 
 sub get_named_object
@@ -198,12 +209,14 @@ sub create_formal
 {
     (my CATS::Problem::Parser $self, my $p) = @_;
 
-    my @src = $p->{src} &&
-        $self->read_member_named(name => $p->{src}, kind => 'formal');
+    my %src;
+    if (defined $p->{src}) {
+        %src = $self->read_member_named(name => $p->{src}, kind => 'formal');
+    }
 
     my $object = {
-        @src,
-        id => $self->{id_gen}->($self),
+        %src,
+        id => $self->{id_gen}->($self, $p->{name}),
         guid => $p->{export},
         type => $cats::formal,
         name => $p->{name},
@@ -229,7 +242,7 @@ sub validate
     $check_order->($problem->{tests}, 'test');
     my @t = values %{$problem->{tests}};
     for (sort {$a->{rank} <=> $b->{rank}} @t) {
-        my $error = validate_test($_) or next;
+        my $error = $self->validate_test($_) or next;
         $self->error("$error for test $_->{rank}");
     }
     my @no_points = ([], []);
@@ -600,6 +613,7 @@ sub import_one_source
             if defined $cats::source_modules{$stype} && $cats::source_modules{$stype} == $cats::checker_module;
         $import->{src_id} = $src_id;
         $self->note("Imported source from guid='$guid'");
+        $self->add_object_to_id($src_id, $import);
     } else {
         $self->warning("Import source not found for guid='$guid'");
     }
