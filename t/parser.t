@@ -834,7 +834,7 @@ subtest 'sources limit params', sub {
 };
 
 subtest 'formal', sub {
-    plan tests => 21;
+    plan tests => 27;
 
     throws_ok { parse({
         'test.xml' => wrap_problem(q~<Formal/>~),
@@ -1024,5 +1024,65 @@ subtest 'formal', sub {
             </Test>
         ~, '1.out' => '100'
     ) }  qr/got 'i' at line 1 : 1/, 'formal check input and validate output (fallback to syntax check - bad formal output)';
+
+    throws_ok {
+        formal_test(q~
+            <Formal name="formal">integer name=A, range=[0, 10];</Formal>
+            <Sample rank="1">
+                <SampleIn validate="formal">100</SampleIn>
+                <SampleOut validate="formal">1</SampleOut>
+            </Sample>
+        ~,
+    ) } qr/expected integer in range from 0 to 10 but '100' given/, 'formal sample validation: inline - bad in';
+
+    throws_ok {
+        formal_test(q~
+            <Formal name="formal">integer name=A, range=[0, 10];</Formal>
+            <Sample rank="1">
+                <SampleIn validate="formal">1</SampleIn>
+                <SampleOut validate="formal">100</SampleOut>
+            </Sample>
+        ~,
+    ) } qr/expected integer in range from 0 to 10 but '100' given/, 'formal sample validation: inline - bad out';
+
+    lives_ok {
+        formal_test(q~
+            <Formal name="formal">integer name=A, range=[0, 10];</Formal>
+            <Sample rank="1">
+                <SampleIn validate="formal">1</SampleIn>
+                <SampleOut validate="formal">1</SampleOut>
+            </Sample>
+        ~,
+    ) } 'formal sample validation: inline - all ok';
+
+    throws_ok {
+        formal_test(q~
+            <Formal name="formal">integer name=A, range=[0, 10];</Formal>
+            <Sample rank="1">
+                <SampleIn validate="formal" src="1.sample"/>
+                <SampleOut validate="formal">1</SampleOut>
+            </Sample>
+        ~, '1.sample' => '100'
+    ) }  qr/expected integer in range from 0 to 10 but '100' given/, 'formal sample validation: src - bad in';
+
+    throws_ok {
+        formal_test(q~
+            <Formal name="formal">integer name=A, range=[0, 10];</Formal>
+            <Sample rank="1">
+                <SampleIn validate="formal">1</SampleIn>
+                <SampleOut validate="formal" src="1.sample"/>
+            </Sample>
+        ~, '1.sample' => '100'
+    ) } qr/expected integer in range from 0 to 10 but '100' given/, 'formal sample validation: src - bad out';
+
+    lives_ok {
+        formal_test(q~
+            <Formal name="formal">integer name=A, range=[0, 10];</Formal>
+            <Sample rank="1">
+                <SampleIn validate="formal" src="1.sample"/>
+                <SampleOut validate="formal" src="1.sample"/>
+            </Sample>
+        ~, '1.sample' => '1'
+    ) } 'formal sample validation: src - all ok';
 
 };

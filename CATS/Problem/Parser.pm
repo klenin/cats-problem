@@ -253,6 +253,11 @@ sub validate
 
     $check_order->($problem->{samples}, 'sample');
 
+    for (sort {$a->{rank} <=> $b->{rank}} values %{$problem->{samples}}) {
+        my $error = $self->validate_by_formal($_) or next;
+        $self->error("$error for sample $_->{rank}");
+    }
+
     $problem->{run_method} ||= $cats::rm_default;
 
     $problem->{$_} && $problem->{description}->{"${_}_url"}
@@ -670,7 +675,7 @@ sub end_tag_Sample
 sub sample_in_out
 {
     my CATS::Problem::Parser $self = shift;
-    my ($atts, $in_out) = @_;
+    my ($atts, $in_out, $in_out_validator) = @_;
     if ($atts->{src}) {
         my $ps = $self->{problem}->{samples};
         for (@{$self->{current_samples}}) {
@@ -681,17 +686,27 @@ sub sample_in_out
                 $self->{source}->read_member($src, "Invalid sample $in_out reference: '$src'");
         }
     }
+    if ($atts->{validate}) {
+        my $ps = $self->{problem}->{samples};
+        for (@{$self->{current_samples}}) {
+            defined $ps->{$_}->{$in_out_validator}
+                and $self->error("Redefined attribute '$in_out_validator' for sample $_");
+            my $validate = $atts->{validate};
+            $ps->{$_}->{$in_out_validator} = $self->get_imported_id($validate) ||
+                $self->get_named_object($validate)->{id};
+        }
+    }
     $self->{stml} = \$self->{current_sample}->{$in_out};
 }
 
 sub start_tag_SampleIn
 {
-    $_[0]->sample_in_out($_[1], 'in_file');
+    $_[0]->sample_in_out($_[1], 'in_file', 'input_validator_id');
 }
 
 sub start_tag_SampleOut
 {
-    $_[0]->sample_in_out($_[1], 'out_file');
+    $_[0]->sample_in_out($_[1], 'out_file', 'output_validator_id');
 }
 
 sub start_tag_Keyword
