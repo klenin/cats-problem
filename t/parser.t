@@ -2,7 +2,7 @@ use strict;
 use warnings;
 
 use FindBin;
-use Test::More tests => 17;
+use Test::More tests => 18;
 use Test::Exception;
 
 use lib '..';
@@ -831,4 +831,198 @@ subtest 'sources limit params', sub {
     $test->('Visualizer', sub { $_[0]->{visualizers}[0] });
     $test->('Checker', sub { $_[0]->{checker} });
     $test->('Interactor', sub { $_[0]->{interactor} });
+};
+
+subtest 'formal', sub {
+    plan tests => 21;
+
+    throws_ok { parse({
+        'test.xml' => wrap_problem(q~<Formal/>~),
+    }) } qr/Formal.name/, 'formal no name';
+
+    throws_ok { parse({
+        'test.xml' => wrap_problem(q~<Formal name="input"/>~),
+    }) } qr/'Formal' tag without formal description/, 'formal empty';
+
+    throws_ok{ parse ({
+        'test.xml' => wrap_problem(q~
+            <Formal name="input" src="input.fd">
+                integer name=A;
+            </Formal>
+            <Checker src="t.pp"/>
+        ~),
+        't.pp' => 'q',
+        'input.fd' => "integer name=B;"
+    }) } qr/Redefined attribute 'src' for formal description input/, 'formal with src and inline code';
+
+    {
+        my $inline_code = "integer name=A;";
+        my $p = parse({
+            'test.xml'  => wrap_problem(qq~
+            <Formal name="input">$inline_code</Formal>
+            <Formal name="input2" src="input2.fd"/>
+            <Checker src="t.pp"/>~
+            ),
+            't.pp'      => 'q',
+            'input2.fd' => 'integer name=B;'
+        });
+        is @{$p->{formals}}, 2, 'formal count';
+        my $i1 = $p->{formals}->[0];
+        my $i2 = $p->{formals}->[1];
+        is $i1->{name}, 'input', 'formal inline name';
+        is $i2->{name}, 'input2', 'formal src name ';
+        is $i1->{src}, $inline_code, 'formal inline code';
+        is $i2->{src}, "integer name=B;", 'formal src code';
+    }
+
+    sub formal_test {
+        my ($test, %files) = @_;
+        parse({
+            'test.xml' => wrap_problem(qq~
+                <Checker src="t.pp"/>
+                <Generator name="gen" src="t.pp"/>
+                <Solution name="sol" src="t.pp"/>
+                $test
+            ~),
+            't.pp' => 'q',
+            %files
+        });
+    }
+
+    throws_ok {
+        formal_test(q~
+            <Formal name="formal">i</Formal>
+            <Test rank="1">
+                <In use="gen" validate="formal"/>
+                <Out use="sol" />
+            </Test>
+        ~,
+    ) } qr/got 'i' at line 1 : 1/, 'formal check input';
+
+    throws_ok {
+        formal_test(q~
+            <Formal name="formal">i</Formal>
+            <Test rank="1">
+                <In use="gen"/>
+                <Out use="sol" validate="formal" />
+            </Test>
+        ~,
+    ) } qr/got 'i' at line 1 : 1/, 'formal check output';
+
+    throws_ok {
+        formal_test(q~
+            <Formal name="formal_in">i</Formal>
+            <Formal name="formal_out">integer name=A;</Formal>
+            <Test rank="1">
+                <In use="gen" validate="formal_in"/>
+                <Out use="sol" validate="formal_out" />
+            </Test>
+        ~,
+    ) } qr/got 'i' at line 1 : 1/, 'formal check input and output (bad formal input)';
+
+    throws_ok {
+        formal_test(q~
+            <Formal name="formal_in">integer name=A;</Formal>
+            <Formal name="formal_out">i</Formal>
+            <Test rank="1">
+                <In use="gen" validate="formal_in"/>
+                <Out use="sol" validate="formal_out" />
+            </Test>
+        ~,
+    ) } qr/got 'i' at line 1 : 1/, 'formal check input and output (bad formal output)';
+
+
+    throws_ok {
+        formal_test(q~
+            <Formal name="formal">integer name=A, range=[0, 10];</Formal>
+            <Test rank="1">
+                <In src="1.in" validate="formal"/>
+                <Out use="sol"/>
+            </Test>
+        ~, '1.in' => '100'
+    ) } qr/expected integer in range from 0 to 10 but '100' given/, 'formal validate input';
+
+    throws_ok {
+        formal_test(q~
+            <Formal name="formal">integer name=A, range=[0, 10];</Formal>
+            <Test rank="1">
+                <In use="gen"/>
+                <Out src="1.out" validate="formal"/>
+            </Test>
+        ~, '1.out' => '100'
+    ) } qr/expected integer in range from 0 to 10 but '100' given/, 'formal validate output';
+
+    throws_ok {
+        formal_test(q~
+            <Formal name="formal">integer name=A, range=[0, 10];</Formal>
+            <Test rank="1">
+                <In src="1.in" validate="formal"/>
+                <Out src="1.out" validate="formal"/>
+            </Test>
+        ~, '1.in' => '100', '1.out' => '1'
+    ) } qr/expected integer in range from 0 to 10 but '100' given/, 'formal validate input and output (bad input)';
+
+    throws_ok {
+        formal_test(q~
+            <Formal name="formal">integer name=A, range=[0, 10];</Formal>
+            <Test rank="1">
+                <In src="1.in" validate="formal"/>
+                <Out src="1.out" validate="formal"/>
+            </Test>
+        ~, '1.in' => '1', '1.out' => '100'
+    ) } qr/expected integer in range from 0 to 10 but '100' given/, 'formal validate input and output (bad output)';
+
+    throws_ok {
+        formal_test(q~
+            <Formal name="formal">integer name=A, range=[0, 10];</Formal>
+            <Test rank="1">
+                <In src="1.in" validate="formal"/>
+                <Out use="sol" validate="formal"/>
+            </Test>
+        ~, '1.in' => '100'
+    ) } qr/expected integer in range from 0 to 10 but '100' given/, 'formal validate input and check output (bad input)';
+
+    throws_ok {
+        formal_test(q~
+            <Formal name="formal">integer name=A, range=[0, 10];</Formal>
+            <Formal name="formal_out">i</Formal>
+            <Test rank="1">
+                <In src="1.in" validate="formal"/>
+                <Out use="sol" validate="formal_out"/>
+            </Test>
+        ~, '1.in' => '1'
+    ) } qr/got 'i' at line 1 : 1/, 'formal validate input and check output (bad formal output)';
+
+    throws_ok {
+        formal_test(q~
+            <Formal name="formal">i</Formal>
+            <Formal name="formal_out">integer name=A, range=[0, 10];</Formal>
+            <Test rank="1">
+                <In use="gen" validate="formal"/>
+                <Out src="1.out" validate="formal_out"/>
+            </Test>
+        ~, '1.out' => '1'
+    ) } qr/got 'i' at line 1 : 1/, 'formal check input and validate output (bad formal input)';
+
+    throws_ok {
+        formal_test(q~
+            <Formal name="formal">integer name=A, range=[0, 10];</Formal>
+            <Test rank="1">
+                <In use="gen" validate="formal"/>
+                <Out src="1.out" validate="formal"/>
+            </Test>
+        ~, '1.out' => '100'
+    ) } qr/expected integer in range from 0 to 10 but '100' given/, 'formal check input and validate output (bad output)';
+
+    throws_ok {
+        formal_test(q~
+            <Formal name="formal">integer name=A, range=[0, 10];</Formal>
+            <Formal name="formal_out">i</Formal>
+            <Test rank="1">
+                <In use="gen" validate="formal"/>
+                <Out src="1.out" validate="formal_out"/>
+            </Test>
+        ~, '1.out' => '100'
+    ) }  qr/got 'i' at line 1 : 1/, 'formal check input and validate output (fallback to syntax check - bad formal output)';
+
 };
