@@ -79,6 +79,7 @@ sub tag_handlers()
     Generator => { s => \&start_tag_Generator, r => ['src', 'name'] },
     Validator => { s => \&start_tag_Validator, r => ['src', 'name'] },
     Visualizer => { s => \&start_tag_Visualizer, r => ['src', 'name'] },
+    Formal => { s => \&start_tag_Formal, e => \&end_tag_Formal, r => ['name']},
     GeneratorRange => {
         s => \&start_tag_GeneratorRange, r => ['src', 'name', 'from', 'to'] },
     Module => { s => \&start_tag_Module, r => ['src', 'de_code', 'type'] },
@@ -106,6 +107,14 @@ sub required_attributes
     }
 }
 
+sub add_object_to_id {
+    $_[0]->{id_to_object}->{$_[1]} = $_[2];
+}
+
+sub get_object_by_id {
+    $_[0]->{id_to_object}->{$_[1]};
+}
+
 sub set_named_object
 {
     my CATS::Problem::Parser $self = shift;
@@ -114,6 +123,9 @@ sub set_named_object
     $self->error("Duplicate object reference: '$name'")
         if defined $self->{objects}->{$name};
     $self->{objects}->{$name} = $object;
+    if (my $id = $object->{id}) {
+        $self->add_object_to_id($id, $object);
+    }
 }
 
 sub get_named_object
@@ -193,6 +205,27 @@ sub create_visualizer
     });
 }
 
+sub create_formal
+{
+    (my CATS::Problem::Parser $self, my $p) = @_;
+
+    my %src;
+    if (defined $p->{src}) {
+        %src = $self->read_member_named(name => $p->{src}, kind => 'formal');
+    }
+
+    my $object = {
+        %src,
+        id => $self->{id_gen}->($self, $p->{name}),
+        guid => $p->{export},
+        type => $cats::formal,
+        name => $p->{name},
+        kind => 'formal',
+        de_code => $cats::formal_de_code
+    };
+    return $self->set_named_object($p->{name}, $object);
+}
+
 sub validate
 {
     my CATS::Problem::Parser $self = shift;
@@ -209,7 +242,7 @@ sub validate
     $check_order->($problem->{tests}, 'test');
     my @t = values %{$problem->{tests}};
     for (sort {$a->{rank} <=> $b->{rank}} @t) {
-        my $error = validate_test($_) or next;
+        my $error = $self->validate_test($_) or next;
         $self->error("$error for test $_->{rank}");
     }
     my @no_points = ([], []);
@@ -219,6 +252,11 @@ sub validate
     $self->validate_testsets;
 
     $check_order->($problem->{samples}, 'sample');
+
+    for (sort {$a->{rank} <=> $b->{rank}} values %{$problem->{samples}}) {
+        my $error = $self->validate_by_formal($_) or next;
+        $self->error("$error for sample $_->{rank}");
+    }
 
     $problem->{run_method} ||= $cats::rm_default;
 
@@ -510,6 +548,29 @@ sub start_tag_Visualizer
     push @{$self->{problem}{visualizers}}, $self->create_visualizer($atts);
 }
 
+sub start_tag_Formal
+{
+    (my CATS::Problem::Parser $self, my $atts) = @_;
+    $self->{stml} = \my $val;
+    push @{$self->{problem}{formals}}, $self->create_formal($atts);
+}
+
+sub end_tag_Formal
+{
+    (my CATS::Problem::Parser $self, my $atts) = @_;
+    my $fd = $self->{problem}{formals}[-1];
+    my $stml = ${$self->{stml}};
+    if ($fd->{src} && $stml) {
+        $self->error("Redefined attribute 'src' for formal description $fd->{name}")
+    }
+    if (!$fd->{src} && !$stml) {
+        $self->error("'Formal' tag without formal description");
+    }
+    $fd->{src} //= $stml;
+
+    $self->end_stml;
+}
+
 sub start_tag_GeneratorRange
 {
     (my CATS::Problem::Parser $self, my $atts) = @_;
@@ -557,6 +618,7 @@ sub import_one_source
             if defined $cats::source_modules{$stype} && $cats::source_modules{$stype} == $cats::checker_module;
         $import->{src_id} = $src_id;
         $self->note("Imported source from guid='$guid'");
+        $self->add_object_to_id($src_id, $import);
     } else {
         $self->warning("Import source not found for guid='$guid'");
     }
@@ -613,7 +675,7 @@ sub end_tag_Sample
 sub sample_in_out
 {
     my CATS::Problem::Parser $self = shift;
-    my ($atts, $in_out) = @_;
+    my ($atts, $in_out, $in_out_validator) = @_;
     if ($atts->{src}) {
         my $ps = $self->{problem}->{samples};
         for (@{$self->{current_samples}}) {
@@ -624,17 +686,27 @@ sub sample_in_out
                 $self->{source}->read_member($src, "Invalid sample $in_out reference: '$src'");
         }
     }
+    if ($atts->{validate}) {
+        my $ps = $self->{problem}->{samples};
+        for (@{$self->{current_samples}}) {
+            defined $ps->{$_}->{$in_out_validator}
+                and $self->error("Redefined attribute '$in_out_validator' for sample $_");
+            my $validate = $atts->{validate};
+            $ps->{$_}->{$in_out_validator} = $self->get_imported_id($validate) ||
+                $self->get_named_object($validate)->{id};
+        }
+    }
     $self->{stml} = \$self->{current_sample}->{$in_out};
 }
 
 sub start_tag_SampleIn
 {
-    $_[0]->sample_in_out($_[1], 'in_file');
+    $_[0]->sample_in_out($_[1], 'in_file', 'input_validator_id');
 }
 
 sub start_tag_SampleOut
 {
-    $_[0]->sample_in_out($_[1], 'out_file');
+    $_[0]->sample_in_out($_[1], 'out_file', 'output_validator_id');
 }
 
 sub start_tag_Keyword

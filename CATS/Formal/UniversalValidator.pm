@@ -42,7 +42,7 @@ sub validate_top {
     $self->{data} = $text;
     $self->{params} = {};
     %{$self->{params}} = %{$fd->{attributes}};
-    unless ($self->{params}->{strict}) {
+    unless (exists $self->{params}->{strict}) {
         $self->{params}->{strict} = CATS::Formal::Expressions::Integer->new(1);
     }
     my $v = $self->validate_record($fd);
@@ -55,30 +55,33 @@ sub validate_top {
 
 sub read_space {
     my ($self) = @_;
-    $self->{data} =~ /^( |\t)/;
-    if ($self->{params}->{strict} && $1 ne ' ') {
-        my $s = substr $self->{data}, 0, 1;
-        assert(1, "space expected but '$s' given");
+    if ($self->{data} =~ /^( |\t)/) {
+        if ($self->{params}->{strict} && $1 ne ' ') {
+            my $s = substr $self->{data}, 0, 1;
+            assert(1, "space expected but '$s' given");
+        }
+
+        $self->{data} = $';
     }
     $self->{need_space} = 0;
-    $self->{data} = $';
 }
 
 sub read_newline {
     my ($self) = @_;
-    $self->{data} =~ /^(\n)/;
-    if ($self->{params}->{strict} && $1 ne "\n") {
-        my $s = substr $self->{data}, 0, 1;
-        assert(1, "EOLN expected but '$s' given");
+    if ($self->{data} =~ /^(\n)/) {
+        if ($self->{params}->{strict} && $1 ne "\n") {
+            my $s = substr $self->{data}, 0, 1;
+            assert(1, "EOLN expected but '$s' given");
+        }
+        $self->{data} = $';
     }
-
-    $self->{data} = $';
 }
 
 sub read_spaces {
     my ($self) = @_;
-    $self->{data} =~ /^(\s*)/;
-    $self->{data} = $';
+    if ($self->{data} =~ /^(\s*)/) {
+        $self->{data} = $';
+    }
 }
 
 sub read_token {

@@ -1,0 +1,3 @@
+#strict=0
+integer name=A, range=[1,10];
+integer name=B, range=[1,10];

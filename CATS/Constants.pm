@@ -31,6 +31,8 @@ $visualizer = 11;
 $visualizer_module = 12;
 $interactor = 13;
 $interactor_module = 14;
+$formal = 15;
+$formal_module = 16;
 
 %source_module_names = (
     $generator => 'generator',
@@ -48,6 +50,8 @@ $interactor_module = 14;
     $visualizer_module => 'visualizer module',
     $interactor => 'interactor',
     $interactor_module => 'interactor module',
+    $formal => 'formal',
+    $formal_module => 'formal module',
 );
 
 # Map source types to module types.
@@ -61,6 +65,7 @@ $interactor_module = 14;
     $validator => $validator_module,
     $visualizer => $visualizer_module,
     $interactor => $interactor_module,
+    $formal => $formal_module
 );
 
 # Values for reqs.state.
@@ -118,5 +123,7 @@ $judge_pin_locked  = 0;
 $judge_pin_req     = 1;
 $judge_pin_contest = 2;
 $judge_pin_any     = 3;
+
+$formal_de_code = 5;
 
 1;

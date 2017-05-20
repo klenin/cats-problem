@@ -4,6 +4,7 @@ use strict;
 use warnings;
 
 use CATS::Testset;
+use CATS::Formal::Formal;
 
 sub apply_test_rank
 {
@@ -19,7 +20,7 @@ sub apply_test_rank
 
 sub validate_test
 {
-    my ($test) = @_;
+    (my CATS::Problem::Parser $self, my $test) = @_;
     defined $test->{in_file} || $test->{generator_id}
         or return 'No input source';
     defined $test->{in_file} && $test->{generator_id}
@@ -32,6 +33,35 @@ sub validate_test
         and return 'Both output file and standard solution';
     ($test->{points} // '0') =~ /^\d+$/
         or return 'Bad points';
+    if (my $error = $self->validate_by_formal($test)) {
+        return $error;
+    }
+    undef;
+}
+
+sub validate_by_formal {
+    (my CATS::Problem::Parser $self, my $test) = @_;
+    my $formals = {
+        INPUT => $self->get_formal_src_by_id($test->{input_validator_id}),
+        OUTPUT => $self->get_formal_src_by_id($test->{output_validator_id})
+    };
+    if (grep {defined} values %$formals) {
+        my $error = CATS::Formal::Formal::validate(
+            $formals, {INPUT => $test->{in_file}, OUTPUT => $test->{out_file}}, 1
+        );
+        $error && return $error;
+    }
+    return undef;
+}
+
+sub get_formal_src_by_id
+{
+    (my CATS::Problem::Parser $self, my $id) = @_;
+    my $obj = $id && $self->get_object_by_id($id) or return undef;
+    return $obj->{src} if $obj->{kind} eq 'formal';
+    if (defined $obj->{type} && $obj->{type} == $cats::formal_module) {
+        return $obj->{src} //= @{$self->{import_source}->get_sources_info([$obj->{guid}])}[0]->{src};
+    }
     undef;
 }
 
@@ -116,6 +146,18 @@ sub do_In_genAll
     ('gen_group', $gg->{$test->{generator_id}} ||= 1 + keys %$gg);
 }
 
+sub set_validator
+{
+    (my CATS::Problem::Parser $self, my $atts, my $validator_type, my @t) = @_;
+    if (defined $atts->{validate}) {
+        for (@t) {
+            my $validate = apply_test_rank($atts->{validate}, $_->{rank});
+            $self->set_test_attr($_, $validator_type,
+                $self->get_imported_id($validate) || $self->get_named_object($validate)->{id});
+        }
+    }
+}
+
 sub start_tag_In
 {
     (my CATS::Problem::Parser $self, my $atts) = @_;
@@ -140,13 +182,7 @@ sub start_tag_In
             "Generator group $gen_group created for tests " . CATS::Testset::pack_rank_spec(map $_->{rank}, @t))
             if $gen_group;
     }
-    if (defined $atts->{validate}) {
-        for (@t) {
-            my $validate = apply_test_rank($atts->{validate}, $_->{rank});
-            $self->set_test_attr($_, 'input_validator_id',
-                $self->get_imported_id($validate) || $self->get_named_object($validate)->{id});
-        }
-    }
+    $self->set_validator($atts, 'input_validator_id', @t);
 }
 
 sub start_tag_Out
@@ -176,13 +212,17 @@ sub start_tag_Out
             $self->set_test_attr($_, 'std_solution_id', $self->get_named_object($use)->{id});
         }
     }
+    $self->set_validator($atts, 'output_validator_id', @t);
 }
 
 sub apply_test_defaults
 {
     my CATS::Problem::Parser $self = shift;
     my $d = $self->{test_defaults};
-    for my $attr (qw(generator_id input_validator_id param std_solution_id points gen_group)) {
+    for my $attr (qw(
+        generator_id input_validator_id output_validator_id
+        param std_solution_id points gen_group
+    )) {
         $d->{$attr} or next;
         $_->{$attr} ||= $d->{$attr} for values %{$self->{problem}{tests}};
     }
