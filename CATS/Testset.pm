@@ -135,6 +135,38 @@ sub get_all_testsets {
         $pid) || {};
 }
 
+sub get_subtasks {
+    my ($dbh, $rid) = @_;
+
+    my ($pid, $testsets) = $dbh->selectrow_array(q~
+        SELECT CP.problem_id, COALESCE(R.testsets, CP.testsets)
+        FROM reqs R
+        INNER JOIN contest_problems CP ON
+            CP.contest_id = R.contest_id AND CP.problem_id = R.problem_id
+        WHERE R.id = ?~, undef,
+        $rid);
+
+    my $all_testsets = get_all_testsets($dbh, $pid);
+
+    my (@result, @other, %used, $rec);
+    $rec = sub {
+        my ($r) = @_;
+        $r =~ s/\s+//g;
+        for (split ',', $r) {
+            if (/^[a-zA-Z][a-zA-Z0-9_]*$/) {
+                my $testset = $all_testsets->{$_} or die \"Unknown testset '$_'";
+                $used{$_}++ and return;
+                $testset->{points} ? push @result, $_ : $rec->($testset->{tests});
+            } else {
+                push @other, $_;
+            }
+        }
+    };
+    $rec->($testsets);
+    push @result, join ',', @other if @other;
+    \@result;
+}
+
 sub get_testset {
     my ($dbh, $table, $id, $update) = @_;
 
