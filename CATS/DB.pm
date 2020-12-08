@@ -60,6 +60,10 @@ sub parse_date {
     $_[1] || undef;
 }
 
+sub make_dsn {
+    "dbi:Firebird:dbname=$CATS::Config::db->{name};host=$CATS::Config::db->{host};ib_charset=UTF8;ib_role=";
+}
+
 package CATS::DB::Postgres;
 
 use Encode;
@@ -122,6 +126,10 @@ sub parse_date {
     "$3-$2-$1 $4";
 }
 
+sub make_dsn {
+    "dbi:Pg:dbname=$CATS::Config::db->{name};host=$CATS::Config::db->{host};";
+}
+
 package CATS::DB;
 
 use Encode;
@@ -152,16 +160,16 @@ sub new_id {
 sub sql_connect {
     my ($db_options) = @_;
 
-    if ($CATS::Config::db_dsn =~ /Firebird/) {
+    if ($CATS::Config::db->{driver} =~ /Firebird/) {
         $db = CATS::DB::Firebird->new;
-    } elsif ($CATS::Config::db_dsn =~ /Pg/) {
+    } elsif ($CATS::Config::db->{driver} =~ /Pg/) {
         $db = CATS::DB::Postgres->new;
     } else {
         die 'Error in sql_connect';
     }
 
     $dbh ||= DBI->connect(
-        $CATS::Config::db_dsn, $CATS::Config::db_user, $CATS::Config::db_password,
+        $db->make_dsn, $CATS::Config::db->{user}, $CATS::Config::db->{password},
         {
             AutoCommit => 0,
             LongReadLen => 1024*1024*20,

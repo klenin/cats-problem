@@ -13,9 +13,13 @@ our %EXPORT_TAGS = (all => [ @EXPORT ]);
 use FindBin;
 use File::Spec;
 
-our $db_dsn = 'dbi:Firebird:dbname=<path-to-your-database>;host=<your-host>;ib_charset=UTF8;ib_role=';
-our $db_user = '<your-username>';
-our $db_password = '<your-password>';
+our $db = {
+    name => '<your-db-name>',
+    driver => '<your-db-driver>',
+    user => '<your-db-username>',
+    password => '<your-db-password>',
+    host => '<your-db-host>',
+};
 
 our $proxy = '<your-proxy-server>';
 
