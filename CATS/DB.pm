@@ -61,7 +61,8 @@ sub parse_date {
 }
 
 sub make_dsn {
-    "dbi:Firebird:dbname=$CATS::Config::db->{name};host=$CATS::Config::db->{host};ib_charset=UTF8;ib_role=";
+    sprintf 'dbi:Firebird:dbname=%s;host=%s;ib_charset=UTF8;ib_role=%s',
+        $CATS::Config::db->{name}, $CATS::Config::db->{host}, $CATS::Config::db->{role} // '';
 }
 
 package CATS::DB::Postgres;

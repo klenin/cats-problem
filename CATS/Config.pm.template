@@ -19,6 +19,7 @@ our $db = {
     user => '<your-db-username>',
     password => '<your-db-password>',
     host => '<your-db-host>',
+    role => '',
 };
 
 our $proxy = '<your-proxy-server>';
