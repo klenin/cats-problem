@@ -103,7 +103,7 @@ sub tag_handlers() {{
     img => {
         s => \&start_tag_img_a_object, e => \&end_nested_in_stml_tag, r => ['picture'], in_stml => 1 },
     a => {
-        s => \&start_tag_img_a_object, e => \&end_nested_in_stml_tag, r => ['attachment'], in_stml => 1 },
+        s => \&start_tag_img_a_object, e => \&end_nested_in_stml_tag, in_stml => 1 },
     object => {
         s => \&start_tag_img_a_object, e => \&end_nested_in_stml_tag, r => ['attachment'], in_stml => 1 },
 }}
