@@ -28,6 +28,8 @@ sub validate_test {
         or return 'No output source';
     defined $test->{out_file} && $test->{std_solution_id}
         and return 'Both output file and standard solution';
+    defined $test->{input_validator_param} && !$test->{input_validator_id}
+        and return 'Attribute "validateParam" without "validate"';
     ($test->{points} // '0') =~ /^\d+$/
         or return 'Bad points';
     undef;
@@ -147,9 +149,6 @@ sub start_tag_In {
         }
     }
     if (defined $atts->{validateParam}) {
-        $atts->{validate} or return $self->error(sprintf
-            "Attribute 'validateParam' without 'validate' for tests #%s",
-            join ',', map $_->{rank}, sort { $a <=> $b } @t);
         for (@t) {
             my $validate_param = apply_test_rank($atts->{validateParam}, $_->{rank});
             $self->set_test_attr($_, 'input_validator_param', $validate_param);
