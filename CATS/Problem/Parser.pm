@@ -114,7 +114,7 @@ sub required_attributes {
     my CATS::Problem::Parser $self = shift;
     my ($el, $attrs, $names) = @_;
     for (@$names) {
-        $attrs->{$_} or $self->error("$el.$_ not specified");
+        ($attrs->{$_} // '') ne '' or $self->error("$el.$_ not specified");
     }
 }
 

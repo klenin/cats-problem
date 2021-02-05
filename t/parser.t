@@ -51,7 +51,7 @@ subtest 'trivial errors', sub {
 };
 
 subtest 'header', sub {
-    plan tests => 11;
+    plan tests => 12;
     my $d = parse({
         'test.xml' => wrap_xml(q~
 <Problem title="Title" lang="en" author="A. Uthor" tlimit="5" mlimit="6" wlimit="100B"
@@ -71,6 +71,16 @@ subtest 'header', sub {
     is $d->{write_limit}, 100, 'write';
     is $d->{input_file}, 'input.txt', 'input';
     is $d->{output_file}, 'output.txt', 'output';
+
+    my $d1 = parse({
+        'test.xml' => wrap_xml(q~
+<Problem title="Title" lang="en" author="A. Uthor" tlimit="0" mlimit="6" wlimit="100B"
+    inputFile="input.txt" outputFile="output.txt">
+<Checker src="checker.pp"/>
+</Problem>~),
+    'checker.pp' => 'begin end.',
+    })->{description};
+    is $d->{time_limit}, 0, 'time 0';
 };
 
 subtest 'missing', sub {
