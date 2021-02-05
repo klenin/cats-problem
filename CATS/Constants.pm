@@ -107,9 +107,10 @@ $st_banned = 23;
 $problem_st_manual    = 0; # Requre manual verification after judge acceptance.
 $problem_st_ready     = 1; # Judges runs solutions at or above this status.
 $problem_st_compile   = 2; # Judges process runs starting at or above this status.
-$problem_st_suspended = 3; # UI accepts submissions at or above this status.
-$problem_st_disabled  = 4; # UI displays problems at or above this status.
-$problem_st_hidden    = 5;
+$problem_st_suspended = 3; # UI accepts normal submissions at or above this status.
+$problem_st_disabled  = 4; # UI displays problems in a rank table at or above this status.
+$problem_st_nosubmit  = 5; # UI displays problems in a list at or above this status.
+$problem_st_hidden    = 6;
 
 # Values for problems.run_method.
 $rm_default = 0;
