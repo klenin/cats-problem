@@ -80,7 +80,7 @@ subtest 'header', sub {
 </Problem>~),
     'checker.pp' => 'begin end.',
     })->{description};
-    is $d->{time_limit}, 0, 'time 0';
+    is $d1->{time_limit}, 0, 'time 0';
 };
 
 subtest 'missing', sub {
