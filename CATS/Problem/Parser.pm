@@ -55,7 +55,7 @@ sub get_zip {
 
 sub build_tag {
     (my CATS::Problem::Parser $self, my $el, my $atts) = @_;
-    "<$el" . join ('', map qq~ $_="${$atts}{$_}"~, sort keys %{$atts}) . '>';
+    "<$el" . join ('', map sprintf(' %s="%s"', $_, escape_xml($atts->{$_})), sort keys %$atts) . '>';
 }
 
 sub tag_handlers() {{

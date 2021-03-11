@@ -199,7 +199,7 @@ subtest 'import', sub {
 };
 
 subtest 'text', sub {
-    plan tests => 12;
+    plan tests => 13;
     my $p = parse({
         'test.xml' => wrap_problem(q~
 <Checker src="checker.pp"/>
@@ -235,6 +235,14 @@ statement</ProblemStatement>
         'checker.pp' => 'z',
     });
     is $p2->{statement}, '&amp;&lt;&gt;&quot;', 'xml characters';
+
+    my $p3 = parse({
+        'test.xml' => wrap_problem(q~
+<Checker src="checker.pp"/>
+<ProblemStatement><a href="&amp;&lt;&gt;&quot;"/></ProblemStatement>~),
+        'checker.pp' => 'z',
+    });
+    is $p3->{statement}, '<a href="&amp;&lt;&gt;&quot;"></a>', 'xml in attribute';
 
     throws_ok { parse({
         'test.xml' => wrap_problem(q~<ZZZ></ZZZ>~),
