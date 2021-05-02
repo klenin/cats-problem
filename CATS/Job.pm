@@ -70,12 +70,12 @@ sub create {
 
     $fields ||= {};
     $fields->{state} ||= $cats::job_st_waiting;
-    my $rid = new_id;
+    my $job_id = new_id;
 
     $fields->{start_time} = \'CURRENT_TIMESTAMP' if $fields->{state} == $cats::job_st_in_progress;
     $dbh->do(_u $sql->insert('jobs', {
         %$fields,
-        id => $rid,
+        id => $job_id,
         type => $type,
         create_time => \'CURRENT_TIMESTAMP',
     })) or return;
@@ -83,10 +83,10 @@ sub create {
     if ($fields->{state} == $cats::job_st_waiting) {
         $dbh->do(q~
             INSERT INTO jobs_queue (id) VALUES (?)~, undef,
-            $rid) or return;
+            $job_id) or return;
     }
 
-    $rid;
+    $job_id;
 }
 
 sub create_splitted_jobs {
