@@ -90,23 +90,25 @@ sub end_tag_Test {
 sub do_In_src {
     (my CATS::Problem::Parser $self, my $test, my $attr) = @_;
     my $src = apply_test_rank($attr, $test->{rank});
-    ('in_file', $self->{source}->read_member($src, "Invalid test input file reference: '$src'"));
+    (
+        in_file => $self->{source}->read_member($src, "Invalid test input file reference: '$src'"),
+        in_file_name => $src);
 }
 
 sub do_In_param {
-    ('param', apply_test_rank($_[2], $_[1]->{rank}))
+    (param => apply_test_rank($_[2], $_[1]->{rank}))
 }
 
 sub do_In_use {
     (my CATS::Problem::Parser $self, my $test, my $attr) = @_;
     my $use = apply_test_rank($attr, $test->{rank});
-    ('generator_id', $self->get_imported_id($use) || $self->get_named_object($use)->{id});
+    (generator_id => $self->get_imported_id($use) || $self->get_named_object($use)->{id});
 }
 
 sub do_In_genAll {
     (my CATS::Problem::Parser $self, my $test, my $attr) = @_;
     my $gg = $self->{gen_groups};
-    ('gen_group', $gg->{$test->{generator_id}} ||= 1 + keys %$gg);
+    (gen_group => $gg->{$test->{generator_id}} ||= 1 + keys %$gg);
 }
 
 sub do_In_hash {
@@ -115,7 +117,7 @@ sub do_In_hash {
         or $self->error("Invalid hash format '$attr' for test #$test->{rank}");
     $alg =~ /^(md5|sha)$/
         or $self->error("Unknown hash algorithm '$alg' for test #$test->{rank}");
-    ('hash', $attr);
+    (hash => $attr);
 }
 
 sub start_tag_In {
@@ -126,7 +128,10 @@ sub start_tag_In {
     for my $attr_name (qw/src param hash/) {
         defined(my $attr_value = $atts->{$attr_name}) or next;
         my $n = "do_In_$attr_name";
-        $self->set_test_attr($_, $self->$n($_, $attr_value)) for @t;
+        for my $test (@t) {
+            my %update = $self->$n($test, $attr_value);
+            $self->set_test_attr($test, $_, $update{$_}) for keys %update;
+        }
     }
     if (defined $atts->{'use'}) {
         my $gen_group = $atts->{genAll} ? ++$self->{gen_groups} : undef;
@@ -168,6 +173,7 @@ sub start_tag_Out {
             my $src = apply_test_rank($atts->{'src'}, $_->{rank});
             if (defined (my $m = $self->{source}->read_member($src))) {
                 $self->set_test_attr($_, 'out_file', $m);
+                $self->set_test_attr($_, 'out_file_name', $src);
             }
             else {
                 push @invalid, $src;
