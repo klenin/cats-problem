@@ -573,7 +573,8 @@ sub select_request {
                 J.type IN (
                     $cats::job_type_generate_snippets,
                     $cats::job_type_initialize_problem,
-                    $cats::job_type_update_self)
+                    $cats::job_type_update_self,
+                    $cats::job_type_run_command)
         ) common
         LEFT JOIN problem_de_bitmap_cache PDEBC ON PDEBC.problem_id = common.problem_id
         LEFT JOIN contests C ON C.id = common.contest_id
@@ -596,8 +597,12 @@ sub select_request {
     if (grep $sel_req->{type} == $_,
         $cats::job_type_generate_snippets,
         $cats::job_type_initialize_problem,
-        $cats::job_type_update_self
+        $cats::job_type_update_self,
+        $cats::job_type_run_command,
     ) {
+        $sel_req->{job_src} = $dbh->selectrow_array(q~
+            SELECT src FROM job_sources WHERE job_id = ?~, undef,
+            $sel_req->{job_id}) if $sel_req->{type} == $cats::job_type_run_command;
         take_job($p->{jid}, $sel_req->{job_id}) or return;
         return $sel_req;
     }

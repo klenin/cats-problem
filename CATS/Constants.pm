@@ -77,6 +77,7 @@ $job_type_initialize_problem = 3;
 $job_type_submission_part = 4;
 $job_type_update_self = 5;
 $job_type_manual_verdict = 6;
+$job_type_run_command = 7;
 
 # Values for reqs.state.
 $st_not_processed = 0;
