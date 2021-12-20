@@ -235,7 +235,8 @@ sub validate {
     $problem->{has_checker} or $self->error('No checker specified');
 
     my $need_interactor =
-        $problem->{run_method} == $cats::rm_interactive || $problem->{run_method} == $cats::rm_competitive;
+        0 < grep $_ == $problem->{run_method},
+        $cats::rm_interactive, $cats::rm_competitive, $cats::rm_competitive_modules;
     $problem->{interactor} && !$need_interactor
         and $self->warning('Interactor defined when run method is not interactive or competitive');
 
@@ -661,18 +662,24 @@ sub start_tag_Run {
         default => $cats::rm_default,
         interactive => $cats::rm_interactive,
         competitive => $cats::rm_competitive,
+        competitive_modules => $cats::rm_competitive_modules,
     );
     defined($self->{problem}{run_method} = $methods{$m})
         or $self->error("Unknown run method: '$m', must be one of: " . join ', ', keys %methods);
 
-    $self->{problem}{run_method} == $cats::rm_competitive && !defined $atts->{players_count}
-        and $self->error("Player count limit must be defined for competitive run method");
-
-    $self->{problem}{run_method} != $cats::rm_competitive && defined $atts->{players_count}
-        and $self->warning("Player count limit defined when run method is not competitive");
-
-    $self->{problem}{players_count} = CATS::Testset::parse_simple_rank($atts->{players_count}, sub { $self->error(@_) })
-        if $self->{problem}{run_method} == $cats::rm_competitive;
+    my $is_competitive =
+        0 < grep $self->{problem}{run_method} == $_,
+        $cats::rm_competitive, $cats::rm_competitive_modules;
+    if ($is_competitive) {
+        $atts->{players_count}
+            or $self->error("Player count limit must be defined for competitive run method");
+        $self->{problem}{players_count} =
+            CATS::Testset::parse_simple_rank($atts->{players_count}, sub { $self->error(@_) });
+    }
+    else {
+        defined $atts->{players_count}
+            and $self->warning("Player count limit defined when run method is not competitive");
+    }
 
     $self->note("Run method set to '$m'");
 }

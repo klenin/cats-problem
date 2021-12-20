@@ -872,7 +872,7 @@ subtest 'interactor', sub {
 };
 
 subtest 'run method', sub {
-    plan tests => 10;
+    plan tests => 11;
 
     my $p = parse({
         'test.xml' => wrap_problem(q~
@@ -931,6 +931,15 @@ subtest 'run method', sub {
     });
     is $p->{run_method}, $cats::rm_competitive, 'run method = competitive';
     is $p->{players_count}->[0], 2, 'run method = competitive, players_count = 2';
+
+    $p = parse({
+        'test.xml' => wrap_problem(q~
+<Run method="competitive_modules" players_count="2,3-5"/>
+<Checker src="t.pp" style="testlib"/>~),
+        't.pp' => 'q',
+    });
+    is $p->{run_method}, $cats::rm_competitive_modules, 'run method = competitive_modules';
+    is $p->{players_count}->[1], 3, 'run method = competitive_modules, players_count = 3';
 
     $p = parse({
         'test.xml' => wrap_problem(q~
