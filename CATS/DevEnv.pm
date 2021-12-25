@@ -118,7 +118,15 @@ sub check_supported {
     my ($given_des, $our_des) = @_;
     use bigint; # Make sure 64-bit integers work on 32-bit platforms.
     # 64-bit integers come from database as strings, ensure conversion.
-    0 == grep $given_des->[$_] != ($given_des->[$_] & (0 + $our_des->[$_])), 0 .. $cats::de_req_bitfields_count - 1;
+    0 == grep $given_des->[$_] != ($given_des->[$_] & (0 + $our_des->[$_])),
+        0 .. $cats::de_req_bitfields_count - 1;
+}
+
+sub merge_bitmaps {
+    my ($dest, $src) = @_;
+    use bigint; # Make sure 64-bit integers work on 32-bit platforms.
+    # 64-bit integers come from database as strings, ensure conversion.
+    $dest->[$_] |= 0 + $src->[$_] for 0 .. $cats::de_req_bitfields_count - 1;
 }
 
 1;

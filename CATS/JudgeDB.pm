@@ -251,7 +251,7 @@ sub ensure_request_de_bitmap_cache {
                 @bitmap = (0) x $cats::de_req_bitfields_count;
                 for my $req_element (@{$req->{elements}}) {
                     my @element_bitmap = $collect_needed_update_req_ids->($req_element);
-                    $bitmap[$_] |= $element_bitmap[$_] for 0..$cats::de_req_bitfields_count-1;
+                    CATS::DevEnv::merge_bitmaps(\@bitmap, \@element_bitmap);
                 }
             }
             else {
