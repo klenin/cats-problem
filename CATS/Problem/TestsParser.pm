@@ -130,7 +130,7 @@ sub start_tag_In {
         my $n = "do_In_$attr_name";
         for my $test (@t) {
             my %update = $self->$n($test, $attr_value);
-            $self->set_test_attr($test, $_, $update{$_}) for keys %update;
+            $self->set_test_attr($test, $_, $update{$_}) for sort keys %update;
         }
     }
     if (defined $atts->{'use'}) {
