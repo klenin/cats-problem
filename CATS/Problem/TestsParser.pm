@@ -51,6 +51,7 @@ sub add_test {
         or $self->error("Bad rank: '$rank'");
     my $t = $self->{problem}{tests}->{$rank} ||= { rank => $rank };
     $self->set_test_attr($t, 'points', $atts->{points});
+    $self->set_test_attr($t, 'descr', $atts->{descr});
     push @{$self->{current_tests}}, $t;
 }
 

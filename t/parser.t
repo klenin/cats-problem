@@ -506,7 +506,7 @@ subtest 'sample', sub {
 };
 
 subtest 'test', sub {
-    plan tests => 64;
+    plan tests => 66;
 
     throws_ok { parse({
         'test.xml' => wrap_problem(q~<Test/>~),
@@ -586,11 +586,14 @@ subtest 'test', sub {
     throws_ok { parse({
         'test.xml' => wrap_problem(q~<Test rank="1"><In hash="$sha$zz">1</In><In hash="$sha$qq"/><Out>2</Out></Test>~),
     }) } qr/Redefined attribute 'hash'/, 'Redefined hash';
+    throws_ok { parse({
+        'test.xml' => wrap_problem(q~<Test rank="1" descr="a"/><Test rank="1" descr="b"/>~),
+    }) } qr/Redefined attribute 'descr'/, 'Redefined descr';
 
     {
         my $p = parse({
             'test.xml' => wrap_problem(q~
-<Test rank="1"><In src="t01.in"/><Out src="t01.out"/></Test>
+<Test rank="1" descr="check it"><In src="t01.in"/><Out src="t01.out"/></Test>
 <Checker src="checker.pp"/>~),
             't01.in' => 'z',
             't01.out' => 'q',
@@ -599,6 +602,7 @@ subtest 'test', sub {
         is scalar(keys %{$p->{tests}}), 1, 'Test 1';
         my $t = $p->{tests}->{1};
         is $t->{rank}, 1, 'Test 1 rank';
+        is $t->{descr}, 'check it', 'Test 1 descr';
         is $t->{in_file}, 'z', 'Test 1 In src';
         is $t->{in_file_name}, 't01.in', 'Test 1 In src name';
         is $t->{out_file}, 'q', 'Test 1 Out src';
