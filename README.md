@@ -1,6 +1,6 @@
 # Library for defining programming problems
 
-[![Build Status](https://travis-ci.org/klenin/cats-problem.svg?branch=master)](https://travis-ci.org/klenin/cats-problem)
+![Build Status](https://github.com//klenin/cats-problem/actions/workflows/main.yml/badge.svg)
 
 Used by [cats-main] and [cats-judge].
 
