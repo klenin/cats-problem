@@ -872,7 +872,7 @@ subtest 'interactor', sub {
 };
 
 subtest 'run method', sub {
-    plan tests => 11;
+    plan tests => 12;
 
     my $p = parse({
         'test.xml' => wrap_problem(q~
