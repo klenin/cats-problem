@@ -506,7 +506,7 @@ subtest 'sample', sub {
 };
 
 subtest 'test', sub {
-    plan tests => 62;
+    plan tests => 64;
 
     throws_ok { parse({
         'test.xml' => wrap_problem(q~<Test/>~),
@@ -600,9 +600,9 @@ subtest 'test', sub {
         my $t = $p->{tests}->{1};
         is $t->{rank}, 1, 'Test 1 rank';
         is $t->{in_file}, 'z', 'Test 1 In src';
-        is $t->{in_file_name}, '01.in', 'Test 1 In src name';
+        is $t->{in_file_name}, 't01.in', 'Test 1 In src name';
         is $t->{out_file}, 'q', 'Test 1 Out src';
-        is $t->{out_file_name}, '01.out', 'Test 1 Out src name';
+        is $t->{out_file_name}, 't01.out', 'Test 1 Out src name';
     }
 
     {
