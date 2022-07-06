@@ -25,6 +25,7 @@ jobs:
 
       - name: Run tests
         run: |
-          cp CATS/Config.pm.template CATS/Config.pm
+          apt install cpanminus
           cpanm --installdeps .
+          cp CATS/Config.pm.template CATS/Config.pm
           prove
