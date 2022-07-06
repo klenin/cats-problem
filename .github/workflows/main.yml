@@ -26,6 +26,6 @@ jobs:
       - name: Run tests
         run: |
           sudo apt-get install cpanminus
-          cpanm --installdeps .
+          sudo cpanm --installdeps .
           cp CATS/Config.pm.template CATS/Config.pm
           prove
