@@ -90,12 +90,15 @@ sub get_problem_tags {
 }
 
 sub get_snippet_text {
-    my ($problem_id, $contest_id, $account_id, $name) = @_;
+    my ($problem_id, $contest_id, $account_id, $names) = @_;
 
-    scalar $dbh->selectrow_array(q~
+    my $sth = $dbh->prepare(q~
         SELECT text FROM snippets
-        WHERE problem_id = ? AND contest_id = ? AND account_id = ? AND name = ?~, undef,
-        $problem_id, $contest_id, $account_id, $name);
+        WHERE problem_id = ? AND contest_id = ? AND account_id = ? AND name = ?~);
+    [ map {
+        $sth->execute($problem_id, $contest_id, $account_id, $_);
+        scalar $sth->fetchrow_array;
+    } @$names ];
 }
 
 sub get_problem_tests {
