@@ -826,15 +826,17 @@ sub save_answer_test_data {
     } or $db->catch_deadlock_error('save_answer_test_data');
 }
 
-sub save_problem_snippet {
-    my ($problem_id, $contest_id, $account_id, $snippet_name, $text) = @_;
+# snippets: { name => text }
+sub save_problem_snippets {
+    my ($problem_id, $contest_id, $account_id, $snippets) = @_;
     eval {
-        $dbh->do(qq~
+        my $sth = $dbh->prepare(q~
             UPDATE snippets SET text = ?
             WHERE problem_id = ? AND contest_id = ? AND
-                account_id = ? AND name = ? AND text IS NULL~, undef,
-            $text, $problem_id, $contest_id, $account_id, $snippet_name);
-
+                account_id = ? AND name = ? AND text IS NULL~);
+        for my $name (keys %$snippets) {
+            $sth->execute($snippets->{$name}, $problem_id, $contest_id, $account_id, $name);
+        }
         $dbh->commit;
         1;
     } or $db->catch_deadlock_error('save_problem_snippet');
