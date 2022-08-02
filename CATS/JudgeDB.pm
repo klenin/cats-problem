@@ -3,6 +3,8 @@ package CATS::JudgeDB;
 use strict;
 use warnings;
 
+use Data::Dumper;
+
 use CATS::DeBitmaps;
 use CATS::Config;
 use CATS::Constants;
@@ -61,8 +63,8 @@ sub get_problem_sources {
     my $imported = $dbh->selectall_arrayref(q~
         SELECT psl.*, ps.id, dd.code FROM problem_sources ps
             INNER JOIN problem_sources_imported psi ON psi.id = ps.id
-            INNER JOIN problem_sources_local psl ON psl.guid = psi.guid
-            INNER JOIN default_de dd ON dd.id = psl.de_id
+            LEFT JOIN problem_sources_local psl ON psl.guid = psi.guid
+            LEFT JOIN default_de dd ON dd.id = psl.de_id
         WHERE ps.problem_id = ? ORDER BY ps.id~, { Slice => {} },
         $pid);
 
@@ -81,12 +83,18 @@ sub get_problem_snippets {
 }
 
 sub get_problem_tags {
-    my ($pid, $cid) = @_;
+    my ($problem_id, $contest_id, $account_id) = @_;
 
-    scalar $dbh->selectrow_array(q~
-        SELECT tags
-        FROM contest_problems WHERE problem_id = ? AND contest_id = ?~, undef,
-        $pid, $cid);
+    join ',', grep defined $_, @{$dbh->selectcol_arrayref(q~
+        SELECT tags FROM contest_problems CP WHERE CP.problem_id = ? AND CP.contest_id = ?
+        UNION
+        SELECT CS.problem_tag
+        FROM contest_accounts CA
+        INNER JOIN contest_sites CS ON CA.contest_id = CS.contest_id AND CS.site_id = CA.site_id
+        WHERE CA.account_id = ? AND CA.contest_id = ?
+        ~, undef,
+        $problem_id, $contest_id,
+        $account_id, $contest_id)};
 }
 
 sub get_snippet_text {
@@ -440,6 +448,7 @@ sub update_judge_de_bitmap {
     }
     elsif (grep +($cache->{$_} // '') ne ($jbmp->{$_} // ''), keys %$jbmp) {
         $dbh->do(_u $sql->update('judge_de_bitmap_cache', $jbmp, $jid));
+        warn Dumper($jbmp);
     }
 }
 
@@ -460,7 +469,9 @@ sub dev_envs_condition {
         END) = 1~;
     };
     my $des_condition = $des_cond_fmt->($table);
-    ($des_condition, map $_ // '', ($de_version, CATS::DeBitmaps::extract_de_bitmap($p)));
+    my @r = ($des_condition, map $_ // '', ($de_version, CATS::DeBitmaps::extract_de_bitmap($p)));
+    #warn join ' | ', @r;
+    @r;
 }
 
 sub can_split {
@@ -609,7 +620,6 @@ sub select_request {
         take_job($p->{jid}, $sel_req->{job_id}) or return;
         return $sel_req;
     }
-
     if (!$dev_env->is_good_version($sel_req->{problem_de_version})) {
         # Our cache is behind judge's -- postpone until next API call.
         return if $sel_req->{problem_de_version} && $sel_req->{problem_de_version} > $dev_env->version;
@@ -791,10 +801,10 @@ sub save_input_test_data {
 
         if (defined $hash) {
             $dbh->do(q~
-                UPDATE tests SET in_file_hash = ? WHERE problem_id = ? AND rank = ?
-                AND (in_file_hash IS NULL OR in_file_hash = ?) ~, undef,
-                $hash, $problem_id, $test_rank, $hash
-            ) or die "Invalid hash for test $test_rank";
+                UPDATE tests SET in_file_hash = ?
+                WHERE problem_id = ? AND rank = ? AND in_file_hash IS NULL~, undef, # OR in_file_hash = ?
+                $hash, $problem_id, $test_rank#, $hash
+            ); # or die "Invalid hash for test $test_rank";
         }
 
         $dbh->commit;
