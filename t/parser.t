@@ -5,7 +5,7 @@ use warnings;
 
 use File::Spec;
 use FindBin;
-use Test::More tests => 20;
+use Test::More tests => 21;
 use Test::Exception;
 
 use lib File::Spec->catdir($FindBin::Bin, '..');
@@ -568,7 +568,7 @@ subtest 'test', sub {
         'test.xml' => wrap_problem(
             q~<Solution name="s" src="s.pp"/><Test rank="1"><In>z</In><Out use="s">out</Out></Test>~),
         's.pp' => 'q',
-    }) } qr/Both output file and standard solution/, 'Test with output file and solution';
+    }) } qr/output file.*standard solution/, 'Test with output file and solution';
     throws_ok { parse({
         'test.xml' => wrap_problem(q~<Test rank="2"></Test><Test rank="1"></Test>~),
     }) } qr/No input source for test 1/, 'Test errors in rank order';
@@ -1060,4 +1060,49 @@ subtest 'quiz', sub {
         local $TODO = 'Quiz unfinished';
         is $p->{tests}->{1}->{points}, 4, 'Quiz max_points';
     }
+};
+
+subtest 'snippets', sub {
+    plan tests => 7;
+
+    throws_ok { parse({
+        'test.xml' => wrap_problem(q~
+<Checker src="t.pp"/>
+<Snippet name="s-1"/>~),
+        't.pp' => 'q',
+    }) } qr/invalid.*name.*s\-1/i, 'bad name';
+
+    throws_ok { parse({
+        'test.xml' => wrap_problem(q~
+<Checker src="t.pp"/>
+<Snippet name="s1"/>
+<Test rank="1"><In>1</In><Out snippet="snip%n">2</Out></Test>~),
+        't.pp' => 'q',
+    }) } qr/output file.*snippet/i, 'both output and snippet';
+
+    throws_ok { parse({
+        'test.xml' => wrap_problem(q~
+<Checker src="t.pp"/>
+<Snippet name="s1" generator="nogen"/>~),
+        't.pp' => 'q',
+    }) } qr/undefined.*nogen/i, 'bad generator';
+
+    my $p = parse({
+        'test.xml' => wrap_problem(q~
+<Checker src="checker.pp"/>
+<Generator name="gen" src="gen.pp"/>
+<Snippet name="snipa"/>
+<Snippet name="snip1"/>
+<Snippet name="snip2" generator="gen"/>
+<Test rank="1-2"><In>1</In><Out snippet="snip%n"/></Test>
+<Test rank="3"><In>1</In><Out snippet="snipa"/></Test>
+~),
+        'checker.pp' => 'begin end.',
+        'gen.pp' => 'begin end.',
+    });
+
+    is @{$p->{snippets}}, 3, 'snippet count';
+    is_deeply [ map $_->{name}, @{$p->{snippets}} ], [ qw(snipa snip1 snip2) ], 'snippet names';
+    is $p->{snippets}->[2]->{generator_id}, 'gen.pp', 'snippet 2 gen';
+    is_deeply [ map $p->{tests}->{$_}->{snippet_name}, 1..3 ], [ qw(snip1 snip2 snipa) ], 'test snippets';
 };

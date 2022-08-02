@@ -26,8 +26,8 @@ sub validate_test {
         and return 'Parameters without generator';
     defined $test->{out_file} || $test->{std_solution_id} || $test->{snippet_name}
         or return 'No output source';
-    defined $test->{out_file} && $test->{std_solution_id}
-        and return 'Both output file and standard solution';
+    1 < grep $_, defined $test->{out_file}, $test->{std_solution_id}, $test->{snippet_name}
+        and return 'More than one of: output file, standard solution ans snippet';
     defined $test->{input_validator_param} && !$test->{input_validator_id}
         and return 'Attribute "validateParam" without "validate"';
     ($test->{points} // '0') =~ /^\d+$/

@@ -442,7 +442,7 @@ sub start_tag_Snippet {
         $snippet->{generator_id} =
             $self->get_imported_id($gen_id) || $self->get_named_object($gen_id)->{id};
     }
-    push @{$self->{problem}{snippets}}, $snippet;
+    push @{$self->{problem}->{snippets}}, $snippet;
 }
 
 sub problem_source_common_params {
