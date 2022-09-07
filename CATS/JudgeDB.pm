@@ -615,7 +615,10 @@ sub select_request {
         $cats::job_type_run_command,
     ) {
         $sel_req->{job_src} = $dbh->selectrow_array(q~
-            SELECT src FROM job_sources WHERE job_id = ?~, undef,
+            SELECT COALESCE(JS.src, JS1.src) FROM jobs J
+            LEFT JOIN job_sources JS ON JS.job_id = J.id
+            LEFT JOIN job_sources JS1 ON JS1.job_id = J.parent_id
+            WHERE J.id = ?~, undef,
             $sel_req->{job_id}) if $sel_req->{type} == $cats::job_type_run_command;
         take_job($p->{jid}, $sel_req->{job_id}) or return;
         return $sel_req;
