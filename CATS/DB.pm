@@ -100,7 +100,7 @@ sub enable_utf8 {
 }
 
 sub disable_utf8 {
-    $CATS::DB::dbh->{pg_enable_utf8} = 0;   
+    $CATS::DB::dbh->{pg_enable_utf8} = 0;
 }
 
 sub catch_deadlock_error {
