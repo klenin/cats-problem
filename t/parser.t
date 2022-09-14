@@ -368,7 +368,7 @@ subtest 'tag stack', sub {
     }) } qr/SampleOut.+Sample/, 'SampleOut outside SampleTest';
     throws_ok { parse({
         'test.xml' => wrap_problem(qq~
-<ProblemStatement><Quiz type="text"><ProblemConstraints></ProblemConstraints></Quiz></ProblemStatement>~),
+<ProblemStatement><p><ProblemConstraints></ProblemConstraints></p></ProblemStatement>~),
     }) } qr/Unexpected/, 'Top-level tag inside stml';
     throws_ok { parse({
         'text.xml' => wrap_problem(qq~
@@ -1045,7 +1045,7 @@ subtest 'linter', sub {
 };
 
 subtest 'quiz', sub {
-    plan tests => 6;
+    plan tests => 23;
 
     throws_ok { parse({
         'test.xml' => wrap_problem(q~
@@ -1067,18 +1067,106 @@ subtest 'quiz', sub {
         'checker.pp' => 'begin end.',
     }) } qr/redefined.*points.*1/i, 'Quiz duplicate points';
 
-    my $p = parse({
+    throws_ok { parse({
         'test.xml' => wrap_problem(q~
-<ProblemStatement><Quiz type="text" points="3"></Quiz><Quiz type="text" points="1" descr="q2"></Quiz></ProblemStatement>
+<ProblemStatement><Quiz type="text"><Text>text<Text>text</Text></Text></Quiz></ProblemStatement>
+<Checker src="checker.pp"/>~),
+        'checker.pp' => 'begin end.',
+    }) } qr/unexpected.*text/i, 'Quiz nested text';
+    throws_ok { parse({
+        'test.xml' => wrap_problem(q~
+<ProblemStatement><Quiz type="text"><Quiz></Quiz></Quiz></ProblemStatement>
+<Checker src="checker.pp"/>~),
+        'checker.pp' => 'begin end.',
+    }) } qr/unexpected.*quiz/i, 'Quiz nested';
+    throws_ok { parse({
+        'test.xml' => wrap_problem(q~
+<ProblemStatement><Quiz type="checkbox"><Answer/></Quiz></ProblemStatement>
+<Checker src="checker.pp"/>~),
+        'checker.pp' => 'begin end.',
+    }) } qr/answer.*checkbox.*text/i, 'Answer not in type text';
+    throws_ok { parse({
+        'test.xml' => wrap_problem(q~
+<ProblemStatement><Quiz type="text"><Answer>1</Answer><Answer>2</Answer></Quiz></ProblemStatement>
+<Checker src="checker.pp"/>~),
+        'checker.pp' => 'begin end.',
+    }) } qr/redefined.*out_file.*1/i, 'Duplicate Answer';
+    throws_ok { parse({
+        'test.xml' => wrap_problem(q~
+<ProblemStatement><Quiz type="text"><Choice/></Quiz></ProblemStatement>
+<Checker src="checker.pp"/>~),
+        'checker.pp' => 'begin end.',
+    }) } qr/choice.*text/i, 'Choice inside Quiz.text';
+    throws_ok { parse({
+        'test.xml' => wrap_problem(q~
+<ProblemStatement><Quiz type="radiogroup"><Choice correct="1"/><Choice correct="1"/></Quiz></ProblemStatement>
+<Checker src="checker.pp"/>~),
+        'checker.pp' => 'begin end.',
+    }) } qr/multiple.*correct/i, 'Multiple correct choices for Quiz.radiogroup';
+
+    {
+        my $p = parse({
+            'test.xml' => wrap_problem(q~
+<ProblemStatement>
+<Quiz type="text" points="3"><Text>123</Text></Quiz>
+<Quiz type="text" points="1" descr="q2"></Quiz>
+</ProblemStatement>
 <Checker src="checker.pp"/>
 <Test rank="1-2"><Out>2</Out></Test>~),
-        'checker.pp' => 'begin end.',
-    });
-    {
+            'checker.pp' => 'begin end.',
+        });
+        is $p->{statement}, '
+<Quiz points="3" type="text"><Text>123</Text></Quiz>
+<Quiz descr="q2" points="1" type="text"></Quiz>
+', 'Quiz statement';
+        is scalar(keys %{$p->{tests}}), 2, 'Quiz tests num';
         is $p->{tests}->{1}->{points}, 3, 'Quiz points 1';
         is $p->{tests}->{2}->{points}, 1, 'Quiz points 2';
         is $p->{tests}->{2}->{descr}, 'q2', 'Quiz descr';
     }
+    {
+        my $p = parse({
+            'test.xml' => wrap_problem(q~
+<ProblemStatement><Quiz type="text"><Answer>rr</Answer></Quiz></ProblemStatement>
+<Checker src="checker.pp"/>~),
+            'checker.pp' => 'begin end.',
+        });
+        is $p->{statement}, '<Quiz type="text"></Quiz>', 'Quiz text answer statement';
+        is $p->{tests}->{1}->{in_file}, '1', 'Quiz text in_file';
+        is $p->{tests}->{1}->{out_file}, 'rr', 'Quiz text out_file';
+    }
+    {
+        my $p = parse({
+            'test.xml' => wrap_problem(q~
+<ProblemStatement>
+<Quiz type="checkbox"><Choice correct="1">one</Choice><Choice>two</Choice><Choice correct="1">three</Choice></Quiz>
+<Quiz type="radiogroup"><Choice>one</Choice><Choice correct="1">two</Choice><Choice>three</Choice></Quiz>
+</ProblemStatement>
+<Checker src="checker.pp"/>~),
+            'checker.pp' => 'begin end.',
+        });
+        is $p->{statement}, '
+<Quiz type="checkbox"><Choice>one</Choice><Choice>two</Choice><Choice>three</Choice></Quiz>
+<Quiz type="radiogroup"><Choice>one</Choice><Choice>two</Choice><Choice>three</Choice></Quiz>
+', 'Quiz choices statement';
+        is $p->{tests}->{1}->{in_file}, '1', 'Quiz choices in_file 1';
+        is $p->{tests}->{1}->{out_file}, '1 3', 'Quiz choices out_file 1';
+        is $p->{tests}->{2}->{in_file}, '2', 'Quiz choices in_file 2';
+        is $p->{tests}->{2}->{out_file}, '2', 'Quiz choices out_file 2';
+    }
+    {
+        my $p = parse({
+            'test.xml' => wrap_problem(q~
+<ProblemStatement>
+<Quiz type="text"><Text>123</Text></Quiz>
+<Quiz type="checkbox"><Choice/><Choice/></Quiz>
+</ProblemStatement>
+<Checker src="checker.pp"/>~),
+            'checker.pp' => 'begin end.',
+        });
+        is scalar(keys %{$p->{tests}}), 0, 'Quiz no tests';
+    }
+
 };
 
 subtest 'snippets', sub {

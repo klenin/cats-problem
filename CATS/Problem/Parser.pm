@@ -96,8 +96,12 @@ sub tag_handlers() {{
     Testset => { s => \&start_tag_Testset, r => ['name', 'tests'] },
     Run => { s => \&start_tag_Run, r => ['method'] },
     Quiz => {
-        s => \&start_tag_Quiz, e => \&end_nested_in_stml_tag,
+        s => \&start_tag_Quiz, e => \&end_tag_Quiz,
         r => ['type'], in => ['ProblemStatement'], in_stml => 1 },
+    Text => { s => \&start_tag_Text, e => \&end_tag_Text, in => ['Quiz'] },
+    Choice => { s => \&start_tag_Choice, e => \&end_tag_Choice, in => ['Quiz'] },
+    Answer => { s => \&start_tag_Answer, e => \&end_tag_Answer, in => ['Quiz'] },
+
     include => {
         s => \&start_tag_include, e => \&end_tag_include, r => ['src'], in_stml => 1 },
     img => {

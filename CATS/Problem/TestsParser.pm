@@ -246,23 +246,98 @@ sub validate_testsets {
     }
 }
 
-my %quiz_types = (checkbox => 1, radiogroup => 1, text => 1);
+my %quiz_types = (checkbox => 2, radiogroup => 2, text => 1);
+sub _quiz_type_choices { $quiz_types{$_[0]} == 2 }
+
+sub _quiz_init_test {
+    (my CATS::Problem::Parser $self, my $tag, my $rank) = @_;
+    if (!$tag->{rank}) {
+        $tag->{rank} = $rank //= ++$self->{quiz_rank};
+        $self->_validate_rank($rank);
+    }
+    else {
+        $rank = $tag->{rank};
+    }
+    $self->{problem}->{tests}->{$rank} ||= { rank => $rank, in_file => $rank };
+}
 
 sub start_tag_Quiz {
     (my CATS::Problem::Parser $self, my $atts, my $el) = @_;
-    $quiz_types{$atts->{type}} or $self->error(
-        "Unknown quiz type '$atts->{type}', must be one of: " . join ', ', sort keys %quiz_types);
 
     $self->{has_quizzes} = 1;
-    $self->{quiz_rank} = my $rank = exists $atts->{rank} ? $atts->{rank} : ++$self->{quiz_rank};
-    $self->_validate_rank($rank);
 
-    my $t = $self->{problem}->{tests}->{$rank} ||= { rank => $rank };
-    $self->set_test_attr($t, 'points', $atts->{points});
-    $self->set_test_attr($t, 'descr', $atts->{descr});
-    $self->set_test_attr($t, 'in_file', $rank);
+    my $c = $self->current_tag;
+    $c->{type} = $atts->{type};
+    $quiz_types{$c->{type}} or $self->error(
+        "Unknown quiz type '$c->{type}', must be one of: " . join ', ', sort keys %quiz_types);
 
+    if (0 < grep exists $atts->{$_}, qw(descr points rank)) {
+        my $t = $self->_quiz_init_test($c, $atts->{rank});
+        $self->set_test_attr($t, 'points', $atts->{points});
+        $self->set_test_attr($t, 'descr', $atts->{descr});
+    }
+
+    if (_quiz_type_choices($c->{type})) {
+        $c->{correct} = [];
+        $c->{choice_count} = 0;
+    }
+    $c->{content} = $self->build_tag($el, $atts);
+}
+
+sub end_tag_Quiz {
+    (my CATS::Problem::Parser $self, my $atts, my $el) = @_;
+
+    my $c = $self->current_tag;
+    ${$self->parent_tag->{stml}} .= $c->{content} . "</$el>";
+    if (_quiz_type_choices($c->{type}) && @{$c->{correct}}) {
+        $c->{type} eq 'radiogroup' && @{$c->{correct}} > 1
+            and $self->error("Multiple correct choices for Quiz.radiogroup");
+        my $t = $self->_quiz_init_test($c);
+        $self->set_test_attr($t, 'out_file', join ' ', @{$c->{correct}});
+    }
+}
+
+sub start_tag_Text {
+    (my CATS::Problem::Parser $self, my $atts, my $el) = @_;
     ${$self->current_tag->{stml}} = $self->build_tag($el, $atts);
+}
+
+sub end_tag_Text {
+    (my CATS::Problem::Parser $self, my $atts, my $el) = @_;
+    $self->parent_tag->{content} .= ${$self->current_tag->{stml}} . "</$el>";
+    undef $self->current_tag->{stml};
+}
+
+sub start_tag_Choice {
+    (my CATS::Problem::Parser $self, my $atts, my $el) = @_;
+    my $p = $self->parent_tag;
+    _quiz_type_choices($p->{type})
+        or $self->error("Choice tag inside Quiz.$p->{type}, must be inside one of: " .
+            join ', ', sort grep _quiz_type_choices($_), keys %quiz_types);
+    ++$p->{choices_count};
+    push @{$p->{correct}}, $p->{choices_count} if $atts->{correct};
+    delete $atts->{correct};
+    ${$self->current_tag->{stml}} = $self->build_tag($el, $atts);
+}
+
+sub end_tag_Choice {
+    (my CATS::Problem::Parser $self, my $atts, my $el) = @_;
+    $self->parent_tag->{content} .= ${$self->current_tag->{stml}} . "</$el>";
+    undef $self->current_tag->{stml};
+}
+
+sub start_tag_Answer {
+    (my CATS::Problem::Parser $self, my $atts, my $el) = @_;
+    $_ eq 'text' or $self->error("Answer tag inside Quiz.$_, must be inside Quiz.text")
+        for $self->parent_tag->{type};
+    ${$self->current_tag->{stml}} = '';
+}
+
+sub end_tag_Answer {
+    (my CATS::Problem::Parser $self, my $atts, my $el) = @_;
+    my $t = $self->_quiz_init_test($self->parent_tag);
+    $self->set_test_attr($t, 'out_file', ${$self->current_tag->{stml}});
+    undef $self->current_tag->{stml};
 }
 
 1;
