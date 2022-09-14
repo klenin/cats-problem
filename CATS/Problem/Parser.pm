@@ -690,13 +690,6 @@ sub end_nested_in_stml_tag {
     undef $self->current_tag->{stml};
 }
 
-sub start_tag_Quiz {
-    (my CATS::Problem::Parser $self, my $atts, my $el) = @_;
-    $self->{max_points_quiz} = ($self->{max_points_quiz} // 0) + ($atts->{points} // 1);
-    $self->{has_quizzes} = 1;
-    ${$self->current_tag->{stml}} = $self->build_tag($el, $atts);
-}
-
 sub start_tag_include {
     (my CATS::Problem::Parser $self, my $atts) = @_;
     my $name = $atts->{src};

@@ -38,7 +38,6 @@ sub validate_test {
 sub set_test_attr {
     my CATS::Problem::Parser $self = shift;
     my ($test, $attr, $value) = @_;
-    $value //= $self->{max_points_quiz};
     defined $value or return;
     defined $test->{$attr}
         and return $self->error("Redefined attribute '$attr' for test #$test->{rank}");
@@ -240,6 +239,12 @@ sub validate_testsets {
         CATS::Testset::validate_testset(
         $all_testsets, $self->{problem}->{tests}, $ts, sub { $self->error(@_) }) or return;
     }
+}
+
+sub start_tag_Quiz {
+    (my CATS::Problem::Parser $self, my $atts, my $el) = @_;
+    $self->{has_quizzes} = 1;
+    ${$self->current_tag->{stml}} = $self->build_tag($el, $atts);
 }
 
 1;
