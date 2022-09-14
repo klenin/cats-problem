@@ -44,11 +44,16 @@ sub set_test_attr {
     $test->{$attr} = $value;
 }
 
-sub add_test {
-    (my CATS::Problem::Parser $self, my $atts, my $rank) = @_;
+sub _validate_rank {
+    (my CATS::Problem::Parser $self, my $rank) = @_;
     $rank =~ /^\d+$/ && $rank > 0 && $rank < 1000
         or $self->error("Bad rank: '$rank'");
-    my $t = $self->{problem}{tests}->{$rank} ||= { rank => $rank };
+}
+
+sub add_test {
+    (my CATS::Problem::Parser $self, my $atts, my $rank) = @_;
+    $self->_validate_rank($rank);
+    my $t = $self->{problem}->{tests}->{$rank} ||= { rank => $rank };
     $self->set_test_attr($t, 'points', $atts->{points});
     $self->set_test_attr($t, 'descr', $atts->{descr});
     push @{$self->{current_tests}}, $t;
@@ -57,7 +62,7 @@ sub add_test {
 sub parse_test_rank {
     (my CATS::Problem::Parser $self, my $rank_spec) = @_;
     keys %{CATS::Testset::parse_test_rank(
-        $self->{problem}{testsets}, $rank_spec, sub { $self->error(@_) })};
+        $self->{problem}->{testsets}, $rank_spec, sub { $self->error(@_) })};
 }
 
 sub start_tag_Test {
@@ -213,7 +218,7 @@ sub apply_test_defaults {
     my $d = $self->{test_defaults};
     for my $attr (qw(generator_id input_validator_id param std_solution_id points gen_group in_file out_file)) {
         defined $d->{$attr} or next;
-        $_->{$attr} //= $d->{$attr} for values %{$self->{problem}{tests}};
+        $_->{$attr} //= $d->{$attr} for values %{$self->{problem}->{tests}};
     }
 }
 
@@ -241,9 +246,22 @@ sub validate_testsets {
     }
 }
 
+my %quiz_types = (checkbox => 1, radiogroup => 1, text => 1);
+
 sub start_tag_Quiz {
     (my CATS::Problem::Parser $self, my $atts, my $el) = @_;
+    $quiz_types{$atts->{type}} or $self->error(
+        "Unknown quiz type '$atts->{type}', must be one of: " . join ', ', sort keys %quiz_types);
+
     $self->{has_quizzes} = 1;
+    $self->{quiz_rank} = my $rank = exists $atts->{rank} ? $atts->{rank} : ++$self->{quiz_rank};
+    $self->_validate_rank($rank);
+
+    my $t = $self->{problem}->{tests}->{$rank} ||= { rank => $rank };
+    $self->set_test_attr($t, 'points', $atts->{points});
+    $self->set_test_attr($t, 'descr', $atts->{descr});
+    $self->set_test_attr($t, 'in_file', $rank);
+
     ${$self->current_tag->{stml}} = $self->build_tag($el, $atts);
 }
 

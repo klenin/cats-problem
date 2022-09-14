@@ -1045,20 +1045,39 @@ subtest 'linter', sub {
 };
 
 subtest 'quiz', sub {
-    plan tests => 1;
+    plan tests => 6;
+
+    throws_ok { parse({
+        'test.xml' => wrap_problem(q~
+<ProblemStatement><Quiz type="zzz" rank="2" points="1"></Quiz></ProblemStatement>
+<Checker src="checker.pp"/>~),
+        'checker.pp' => 'begin end.',
+    }) } qr/unknown.*type.*zzz/i, 'Quiz bad type';
+    throws_ok { parse({
+        'test.xml' => wrap_problem(q~
+<ProblemStatement><Quiz type="text" rank="2" points="1"></Quiz></ProblemStatement>
+<Checker src="checker.pp"/>~),
+        'checker.pp' => 'begin end.',
+    }) } qr/missing\stest.*1/i, 'Quiz bad rank';
+    throws_ok { parse({
+        'test.xml' => wrap_problem(q~
+<ProblemStatement><Quiz type="text" rank="1" points="1"></Quiz></ProblemStatement>
+<Test rank="1" points="2"><Out>2</Out></Test>
+<Checker src="checker.pp"/>~),
+        'checker.pp' => 'begin end.',
+    }) } qr/redefined.*points.*1/i, 'Quiz duplicate points';
 
     my $p = parse({
-        'test.xml' => wrap_xml(qq~
-<Problem title="quizz" lang="en" tlimit="5" inputFile="asd" outputFile="asd">
-<ProblemStatement><Quiz type="text" points="3"></Quiz><Quiz type="text"></Quiz></ProblemStatement>
+        'test.xml' => wrap_problem(q~
+<ProblemStatement><Quiz type="text" points="3"></Quiz><Quiz type="text" points="1" descr="q2"></Quiz></ProblemStatement>
 <Checker src="checker.pp"/>
-<Test rank="1"><In>2</In><Out>2</Out></Test>
-</Problem>~),
+<Test rank="1-2"><Out>2</Out></Test>~),
         'checker.pp' => 'begin end.',
     });
-    TODO: {
-        local $TODO = 'Quiz unfinished';
-        is $p->{tests}->{1}->{points}, 4, 'Quiz max_points';
+    {
+        is $p->{tests}->{1}->{points}, 3, 'Quiz points 1';
+        is $p->{tests}->{2}->{points}, 1, 'Quiz points 2';
+        is $p->{tests}->{2}->{descr}, 'q2', 'Quiz descr';
     }
 };
 
