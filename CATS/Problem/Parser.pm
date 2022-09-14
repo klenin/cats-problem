@@ -109,6 +109,7 @@ sub tag_handlers() {{
 }}
 
 sub current_tag { $_[0]->{tag_stack}->[-1] }
+sub parent_tag { $_[0]->{tag_stack}->[-2] }
 
 sub required_attributes {
     my CATS::Problem::Parser $self = shift;
@@ -686,7 +687,7 @@ sub start_tag_Run {
 
 sub end_nested_in_stml_tag {
     (my CATS::Problem::Parser $self, my $atts, my $el) = @_;
-    ${$self->{tag_stack}->[-2]->{stml}} .= ${$self->current_tag->{stml}} . "</$el>";
+    ${$self->parent_tag->{stml}} .= ${$self->current_tag->{stml}} . "</$el>";
     undef $self->current_tag->{stml};
 }
 
@@ -700,7 +701,7 @@ sub start_tag_include {
 
 sub end_tag_include {
     (my CATS::Problem::Parser $self, my $atts, my $el) = @_;
-    ${$self->{tag_stack}->[-2]->{stml}} .= ${$self->current_tag->{stml}};
+    ${$self->parent_tag->{stml}} .= ${$self->current_tag->{stml}};
     undef $self->current_tag->{stml};
 }
 
@@ -719,7 +720,7 @@ sub parse_xml {
     $xml_parser->setHandlers(
         Start => sub { $self->on_start_tag(@_) },
         End => sub { $self->on_end_tag(@_) },
-        Char => sub { ${$self->current_tag->{stml}} .= escape_xml($_[1]) if $self->current_tag->{stml} },
+        Char => sub { $_ and $$_ .= escape_xml($_[1]) for $self->current_tag->{stml}; },
         XMLDecl => sub { $self->{problem}{encoding} = $_[2] },
     );
     $xml_parser->parse($self->{source}->read_member($xml_file));
