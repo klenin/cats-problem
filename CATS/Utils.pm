@@ -351,16 +351,25 @@ sub gen_url_params {
 
 sub redirect_url_function {
     my ($u, %p) = @_;
-    "$u?" . join ';', gen_url_params(%p);
+    %p ? "$u?" . join ';', gen_url_params(%p) : $u;
 }
 
 sub external_url_function {
     my ($u, %p) = @_;
-    "$u?" . join '&', gen_url_params(%p);
+    %p ? "$u?" . join '&', gen_url_params(%p) : $u;
 }
 
 sub url_function {
-    redirect_url_function($CATS::Config::relative_url, f => @_)
+    my ($f, @rest) = @_;
+    # New format, cats/<route>
+    redirect_url_function($CATS::Config::relative_url . $f, @rest)
+    # Old format, cats?f=<route>
+    # redirect_url_function($CATS::Config::relative_url, f => @_)
+}
+
+sub absolute_url_function {
+    my ($f, @rest) = @_;
+    redirect_url_function($CATS::Config::absolute_url . $f, @rest)
 }
 
 # unused

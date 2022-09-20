@@ -3,7 +3,7 @@ use warnings;
 
 use File::Spec;
 use FindBin;
-use Test::More tests => 19;
+use Test::More tests => 20;
 use Test::Exception;
 
 use lib File::Spec->catdir($FindBin::Bin, '..');
@@ -44,6 +44,7 @@ is sfn('пример 1'), 'xxxxxxxxxxxxx1', 'sanitize_file_name 2';
 {
 is external_url_function('google.com', q => 'abc', a => 11), 'google.com?a=11&q=abc', 'url';
 is external_url_function('t', qq => 'a?= %;&+1'), 't?qq=a%3F%3D%20%25%3B%26%2B1', 'url quoting';
+is external_url_function('host.org'), 'host.org', 'url no params';
 }
 
 {
