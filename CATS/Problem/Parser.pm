@@ -82,7 +82,7 @@ sub tag_handlers() {{
     Linter => { s => \&start_tag_Linter, r => ['src', 'name', 'stage'] },
     GeneratorRange => {
         s => \&start_tag_GeneratorRange, r => ['src', 'name', 'from', 'to'] },
-    Module => { s => \&start_tag_Module, r => ['src', 'de_code', 'type'] },
+    Module => { s => \&start_tag_Module, e => \&end_stml, r => ['de_code', 'type'] },
     Import => { s => \&start_tag_Import, r => ['guid'] },
     Test => { s => \&start_tag_Test, e => \&end_tag_Test, r => ['rank'] },
     TestRange => {
@@ -541,14 +541,24 @@ sub start_tag_Module {
 
     exists CATS::Problem::module_types()->{$atts->{type}}
         or $self->error("Unknown module type: '$atts->{type}'");
-    push @{$self->{problem}{modules}}, {
-        id => $self->{id_gen}->($self, $atts->{src}),
-        $self->read_member_named(name => $atts->{src}, kind => 'module'),
+    $atts->{src} || $atts->{fileName}
+        or $self->error('No source defined for module');
+    $atts->{src} && $atts->{fileName}
+        and $self->error('Multiple sources defined for module');
+    push @{$self->{problem}{modules}}, my $m = {
+        id => $self->{id_gen}->($self, $atts->{src} || $atts->{fileName}),
+        ($atts->{src} ?
+            $self->read_member_named(name => $atts->{src}, kind => 'module') :
+            (path => $atts->{fileName}, kind => 'module')),
         de_code => $atts->{de_code},
         guid => $atts->{export}, type => $atts->{type},
         type_code => CATS::Problem::module_types()->{$atts->{type}},
         main => $atts->{main},
     };
+    if ($atts->{fileName}) {
+        $self->current_tag->{is_literal} = 1;
+        $self->current_tag->{stml} = \($m->{src} = '');
+    }
 }
 
 sub import_one_source {
@@ -720,12 +730,20 @@ sub parse_xml {
     (my CATS::Problem::Parser $self, my $xml_file) = @_;
     $self->{tag_stack} = [];
 
-    my $xml_parser = new XML::Parser::Expat;
+    my $parse_Char = sub {
+        my $c = $self->current_tag;
+        for ($c->{stml}) {
+            $_ or return;
+            $$_ .= $c->{is_literal} ? $_[1] : escape_xml($_[1]);
+        }
+    };
+
+    my $xml_parser = XML::Parser::Expat->new;
     $xml_parser->setHandlers(
         Start => sub { $self->on_start_tag(@_) },
         End => sub { $self->on_end_tag(@_) },
-        Char => sub { $_ and $$_ .= escape_xml($_[1]) for $self->current_tag->{stml}; },
-        XMLDecl => sub { $self->{problem}{encoding} = $_[2] },
+        Char => $parse_Char,
+        XMLDecl => sub { $self->{problem}->{encoding} = $_[2] },
     );
     $xml_parser->parse($self->{source}->read_member($xml_file));
 }

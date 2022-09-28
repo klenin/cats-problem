@@ -5,7 +5,7 @@ use warnings;
 
 use File::Spec;
 use FindBin;
-use Test::More tests => 21;
+use Test::More tests => 22;
 use Test::Exception;
 
 use lib File::Spec->catdir($FindBin::Bin, '..');
@@ -1212,4 +1212,49 @@ subtest 'snippets', sub {
     is_deeply [ map $_->{name}, @{$p->{snippets}} ], [ qw(snipa snip1 snip2) ], 'snippet names';
     is $p->{snippets}->[2]->{generator_id}, 'gen.pp', 'snippet 2 gen';
     is_deeply [ map $p->{tests}->{$_}->{snippet_name}, 1..3 ], [ qw(snip1 snip2 snipa) ], 'test snippets';
+};
+
+subtest 'modules', sub {
+    plan tests => 13;
+
+    throws_ok { parse({
+        'test.xml' => wrap_problem(q~
+<Module de_code="1"/>~),
+    }) } qr/module.*type/i, 'no type';
+    throws_ok { parse({
+        'test.xml' => wrap_problem(q~
+<Module type="bad" de_code="1"/>~),
+    }) } qr/unknown.*type.*bad/i, 'bad type';
+    throws_ok { parse({
+        'test.xml' => wrap_problem(q~
+<Module type="checker" de_code="1"/>~),
+    }) } qr/no.*source/i, 'no src';
+    throws_ok { parse({
+        'test.xml' => wrap_problem(q~
+<Module type="checker" de_code="1" src="bad"/>~),
+    }) } qr/invalid.*reference.*bad/i, 'bad src';
+    throws_ok { parse({
+        'test.xml' => wrap_problem(q~
+<Module type="checker" de_code="1" src="t.pp" fileName="q.pp"/>~),
+        't.pp' => 'q',
+    }) } qr/multiple.*sources/i, 'multiple src';
+    my $p = parse({
+        'test.xml' => wrap_problem(q~
+<Checker src="t.pp"/>
+<Module type="checker" de_code="1" src="q.pp"/>
+<Module type="checker" de_code="1" fileName="m.pp">content</Module>
+<Module type="checker" de_code="1" fileName="c.pp">&amp;<![CDATA[
+<>&&
+]]></Module>~),
+        't.pp' => 'q',
+        'q.pp' => 'z',
+    });
+    is @{$p->{modules}}, 3, 'module count';
+    is_deeply [ map $_->{kind}, @{$p->{modules}} ], [ ('module') x 3 ], 'module kinds';
+    is $p->{modules}->[0]->{path}, 'q.pp', 'module 0 path';
+    is $p->{modules}->[0]->{src}, 'z', 'module 0 src';
+    is $p->{modules}->[1]->{path}, 'm.pp', 'module 1 path';
+    is $p->{modules}->[1]->{src}, 'content', 'module 1 src';
+    is $p->{modules}->[2]->{path}, 'c.pp', 'module 2 path';
+    is $p->{modules}->[2]->{src}, "&\n<>&&\n", 'module 2 src';
 };
