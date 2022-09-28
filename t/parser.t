@@ -396,7 +396,7 @@ subtest 'apply_test_rank', sub {
 };
 
 subtest 'sample', sub {
-    plan tests => 38;
+    plan tests => 40;
 
     throws_ok { parse({
         'test.xml' => wrap_problem(q~<Sample/>~),
@@ -427,6 +427,11 @@ subtest 'sample', sub {
 <Sample rank="1"><SampleIn><tt>zz</tt></SampleIn><SampleOut src="s">ww</SampleOut></Sample>~),
         's' => 'a',
     }) } qr/Redefined source.*SampleOut.*1/, 'Sample with duplicate output';
+    throws_ok { parse({
+            'test.xml' => wrap_problem(q~
+<Sample rank="1"><SampleIn html="1">zz</SampleIn><SampleOut>w</SampleOut></Sample>
+<Sample rank="1"><SampleIn html="0"/></Sample>~),
+    }) } qr/Redefined.*html.*SampleIn.*1/, 'Sample with duplicate html attr';
     throws_ok { parse({
         'test.xml' => wrap_problem(q~<Sample rank="1"><SampleIn src="t01.in"/><SampleIn src="t01.in"/></Sample>~),
         't01.in' => 'z',
@@ -464,6 +469,7 @@ subtest 'sample', sub {
         is $s2->{out_file}, 'bbb', 'Sample 2 Out';
         my $s3 = $p->{samples}->{3};
         is $s3->{in_file}, '&amp;<b>&lt;</b>', 'Sample 3 In';
+        is $s3->{in_html}, 1, 'Sample 3 In Html';
         is $s3->{out_file}, '&<b><</b>', 'Sample 3 Out';
     }
     {

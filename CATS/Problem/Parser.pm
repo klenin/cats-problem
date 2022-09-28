@@ -90,8 +90,8 @@ sub tag_handlers() {{
     In => { s => \&start_tag_In, e => \&end_tag_In, in => ['Test', 'TestRange'] },
     Out => { s => \&start_tag_Out, e => \&end_tag_Out, in => ['Test', 'TestRange'] },
     Sample => { s => \&start_tag_Sample, e => \&end_tag_Sample, r => ['rank'] },
-    SampleIn => { start_end_tag_SampleInOut('in_file'), in => ['Sample'] },
-    SampleOut => { start_end_tag_SampleInOut('out_file'), in => ['Sample'] },
+    SampleIn => { start_end_tag_SampleInOut('in_file', 'in_html'), in => ['Sample'] },
+    SampleOut => { start_end_tag_SampleInOut('out_file', 'out_html'), in => ['Sample'] },
     Keyword => { s => \&start_tag_Keyword, r => ['code'] },
     Testset => { s => \&start_tag_Testset, r => ['name', 'tests'] },
     Run => { s => \&start_tag_Run, r => ['method'] },
@@ -631,12 +631,20 @@ sub sample_inout_file {
 
 sub start_sample_in_out {
     my CATS::Problem::Parser $self = shift;
-    my ($atts, $in_out) = @_;
+    my ($atts, $in_out, $html) = @_;
     if ($atts->{src}) {
         for (@{$self->{current_samples}}) {
             my $f = $self->sample_inout_file($_, $in_out);
             my $src = apply_test_rank($atts->{src}, $_);
             $$f = $self->{source}->read_member($src, "Invalid sample $in_out reference: '$src'");
+        }
+    }
+    if (exists $atts->{html}) {
+        for (@{$self->{current_samples}}) {
+            my $h = \$self->{problem}->{samples}->{$_}->{$html};
+            defined $$h and $self->error(
+                sprintf "Redefined html attribute for %s %d", $self->current_tag->{el}, $_);
+            $$h = $atts->{html};
         }
     }
     $self->current_tag->{is_literal} = !$atts->{html};
@@ -648,15 +656,16 @@ sub end_sample_in_out {
     $self->end_stml;
     my $t = $self->{current_sample_data}->{$in_out};
     return if $t eq '';
+    my $html = $self->{current_sample_data}->{html}->{$in_out};
     for (@{$self->{current_samples}}) {
         ${$self->sample_inout_file($_, $in_out)}= $t;
     }
 }
 
 sub start_end_tag_SampleInOut {
-    my ($in_out) = @_;
+    my ($in_out, $html) = @_;
     (
-        s => sub { $_[0]->start_sample_in_out($_[1], $in_out) },
+        s => sub { $_[0]->start_sample_in_out($_[1], $in_out, $html) },
         e => sub { $_[0]->end_sample_in_out($in_out) },
     );
 }
