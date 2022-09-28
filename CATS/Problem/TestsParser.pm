@@ -164,6 +164,7 @@ sub start_tag_In {
             $self->set_test_attr($_, 'input_validator_param', $validate_param);
         }
     }
+    $self->current_tag->{is_literal} = 1;
     $self->current_tag->{stml} = \($self->{current_test_data}->{in_file} = '');
 }
 
@@ -199,6 +200,7 @@ sub start_tag_Out {
             $self->set_test_attr($_, 'snippet_name', $snippet);
         }
     }
+    $self->current_tag->{is_literal} = 1;
     $self->current_tag->{stml} = \($self->{current_test_data}->{out_file} = '');
 }
 

@@ -509,7 +509,7 @@ subtest 'sample', sub {
 };
 
 subtest 'test', sub {
-    plan tests => 66;
+    plan tests => 68;
 
     throws_ok { parse({
         'test.xml' => wrap_problem(q~<Test/>~),
@@ -618,16 +618,21 @@ subtest 'test', sub {
 <Test rank="1"><In/><In>in1</In><Out/></Test>
 <Test rank="1"><Out>out1</Out></Test>
 <Test rank="2"><In>in2</In><Out>out2</Out></Test>
+<Test rank="3"><In>&amp;<tag/></In><Out>&lt;&gt;</Out></Test>
 <Checker src="checker.pp"/>~),
             'checker.pp' => 'z',
         });
-        is scalar(keys %{$p->{tests}}), 2, 'Test text';
+        is scalar(keys %{$p->{tests}}), 3, 'Test text';
         for (1..2) {
             my $t = $p->{tests}->{$_};
             is $t->{rank}, $_, 'Test text rank';
             is $t->{in_file}, "in$_", 'Test text In';
             is $t->{out_file}, "out$_", 'Test text Out';
         }
+        my $t = $p->{tests}->{3};
+        # TODO
+        is $t->{in_file}, '&<tag></tag>', 'Test text In literal';
+        is $t->{out_file}, '<>', 'Test text Out literal';
     }
 
     {
