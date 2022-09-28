@@ -639,6 +639,7 @@ sub start_sample_in_out {
             $$f = $self->{source}->read_member($src, "Invalid sample $in_out reference: '$src'");
         }
     }
+    $self->current_tag->{is_literal} = !$atts->{html};
     $self->current_tag->{stml} = \($self->{current_sample_data}->{$in_out} = '');
 }
 

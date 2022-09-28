@@ -396,7 +396,7 @@ subtest 'apply_test_rank', sub {
 };
 
 subtest 'sample', sub {
-    plan tests => 37;
+    plan tests => 38;
 
     throws_ok { parse({
         'test.xml' => wrap_problem(q~<Sample/>~),
@@ -449,19 +449,22 @@ subtest 'sample', sub {
             'test.xml' => wrap_problem(q~
 <Sample rank="1"><SampleIn src="s"/><SampleOut src="s"/></Sample>
 <Sample rank="2"><SampleIn>aaa</SampleIn><SampleOut>bbb</SampleOut></Sample>
+<Sample rank="3"><SampleIn html="1">&amp;<b>&lt;</b></SampleIn><SampleOut>&amp;<b>&lt;</b></SampleOut></Sample>
 <Checker src="checker.pp"/>~),
             'checker.pp' => 'zz',
             's' => 'sss',
         });
-        is scalar(keys %{$p->{samples}}), 2, 'Sample count';
+        is scalar(keys %{$p->{samples}}), 3, 'Sample count';
+        is_deeply [ map $p->{samples}->{$_}->{rank}, 1..3 ], [ 1..3 ], 'Sample ranks';
         my $s1 = $p->{samples}->{1};
-        is $s1->{rank}, 1, 'Sample 1 rank';
         is $s1->{in_file}, 'sss', 'Sample 1 In src';
         is $s1->{out_file}, 'sss', 'Sample 1 Out src';
         my $s2 = $p->{samples}->{2};
-        is $s2->{rank}, 2, 'Sample 2 rank';
         is $s2->{in_file}, 'aaa', 'Sample 2 In';
         is $s2->{out_file}, 'bbb', 'Sample 2 Out';
+        my $s3 = $p->{samples}->{3};
+        is $s3->{in_file}, '&amp;<b>&lt;</b>', 'Sample 3 In';
+        is $s3->{out_file}, '&<b><</b>', 'Sample 3 Out';
     }
     {
         my $p = parse({
