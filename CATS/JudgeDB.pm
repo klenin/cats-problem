@@ -377,19 +377,36 @@ sub invalidate_de_bitmap_cache {
     $dbh->commit;
 }
 
+sub _has_state_params {
+    my ($p, $state, @params) = @_;
+    $p->{state} == $state && 0 == grep !defined $p->{$_}, @params;
+}
+
+# job_id, req_id, problem_id, contest_id, account_id, state, failed_test
 sub set_request_state {
     my ($p) = @_;
 
     $p->{req_id} or return;
     CATS::Job::is_canceled($p->{job_id}) and return;
 
+    if (_has_state_params($p, $cats::st_awaiting_verification, qw(account_id problem_id contest_id))) {
+        # Latest AW supercedes previous ones.
+        $dbh->do(q~
+            UPDATE reqs R SET R.state = ?
+            WHERE
+                R.account_id = ? AND R.contest_id = ? AND R.problem_id = ? AND
+                R.state = ?~, undef,
+            $cats::st_ignore_submit,
+            $p->{account_id}, $p->{contest_id}, $p->{problem_id},
+            $cats::st_awaiting_verification);
+    }
     $dbh->do(q~
         UPDATE reqs SET state = ?, failed_test = ?, result_time = CURRENT_TIMESTAMP
         WHERE id = ?~, undef,
         $p->{state}, $p->{failed_test}, $p->{req_id});
 
     # Suspend further problem testing on unhandled error.
-    if ($p->{state} == $cats::st_unhandled_error && defined $p->{problem_id} && defined $p->{contest_id}) {
+    if (_has_state_params($p, $cats::st_unhandled_error, qw(problem_id contest_id))) {
         $dbh->do(q~
             UPDATE contest_problems SET status = ?
             WHERE problem_id = ? AND contest_id = ? AND status < ?~, undef,
