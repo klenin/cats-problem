@@ -106,6 +106,7 @@ sub get_snippet_text {
     [ map {
         $sth->execute($problem_id, $contest_id, $account_id, $_);
         scalar $sth->fetchrow_array;
+        $sth->finish;
     } @$names ];
 }
 
