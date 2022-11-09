@@ -866,7 +866,9 @@ sub git {
 
 sub git_handler {
     my ($self, $git_tail) = @_;
-    open my $fd, '-|', "git --git-dir=$self->{git_dir} --work-tree=$self->{dir} $git_tail" or die("cannot run git command: $!");
+    my $cmd = "git --git-dir=$self->{git_dir} --work-tree=$self->{dir} $git_tail";
+    warn "git: $cmd" if $self->{debug};
+    open my $fd, '-|', $cmd or die("cannot run git command: $!");
     return $fd;
 }
 
