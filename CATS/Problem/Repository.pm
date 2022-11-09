@@ -803,7 +803,7 @@ sub blob {
     else {
         my $nr;
         while (my $line = <$fd>) {
-            chomp $line;
+            $line =~ s/[\n\r]+$//;
             # Guess encoding
             $result->{encoding} = $enc = $enc->($line) if ref $enc eq 'CODE';
             $line = Encode::decode($enc, $line);
