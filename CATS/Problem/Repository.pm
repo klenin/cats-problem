@@ -789,14 +789,14 @@ sub blob {
         is_remote => $self->get_remote_url,
     };
 
-    my $mimetype = blob_mimetype($fd, $file);
+    $result->{mimetype} = my $mimetype = blob_mimetype($fd, $file);
     # use 'blob_plain' (aka 'raw') view for files that cannot be displayed
-    if ($mimetype !~ m!^(?:text/|image/(?:gif|png|jpeg)|application/xml$)! && -B $fd) {
+    if ($mimetype !~ m!^(?:text/|image/(?:gif|png|jpeg)|application/(?:xml|pdf)$)! && -B $fd) {
         close $fd;
         return $result;
     }
 
-    if ($mimetype =~ m!^image/!) {
+    if ($mimetype =~ m!^image/|^application/pdf!) {
         my @parts = split CATS::Config::cats_dir, $self->{dir} . $file;
         $result->{image} = $parts[1];
     }
