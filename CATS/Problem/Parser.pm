@@ -70,9 +70,12 @@ sub tag_handlers() {{
     Problem => {
         s => \&start_tag_Problem, e => \&end_tag_Problem,
         r => ['title', 'lang', 'tlimit', 'inputFile', 'outputFile'], in => ['CATS']},
+
     Attachment => { s => \&start_tag_Attachment, r => ['src', 'name'] },
     Picture => { s => \&start_tag_Picture, r => ['src', 'name'] },
     Snippet => { s => \&start_tag_Snippet, r => ['name'] },
+    Resource => { s => \&start_tag_Resource, r => ['url', 'name'] },
+
     Solution => { s => \&start_tag_Solution, r => ['src', 'name'] },
     Checker => { s => \&start_tag_Checker, r => ['src'] },
     Interactor => { s => \&start_tag_Interactor, r => ['src'] },
@@ -448,6 +451,25 @@ sub start_tag_Snippet {
             $self->get_imported_id($gen_id) || $self->get_named_object($gen_id)->{id};
     }
     push @{$self->{problem}->{snippets}}, $snippet;
+}
+
+sub start_tag_Resource {
+    (my CATS::Problem::Parser $self, my $atts) = @_;
+
+    my $res_type = $cats::res_types->{$atts->{type}}
+        or $self->error("Invalid resource type '$atts->{type}' must be one of: " .
+            join ', ', sort keys %$cats::res_types);
+    $atts->{name} =~ /^[a-zA-Z][a-zA-Z0-9_]*$/
+        or $self->error("Invalid resource name '$atts->{name}'");
+    for (@{$self->{problem}->{resources}}) {
+        $_->{url} ne $atts->{url}
+            or $self->error("Duplicate resource urls for '$atts->{name}' and $_->{name}");
+    }
+
+    my $resource = {
+        id => $self->{id_gen}->($self, $atts->{name}),
+        %$atts{qw(name url)}, res_type => $res_type };
+    push @{$self->{problem}->{resources}}, $self->set_named_object($atts->{name}, $resource);
 }
 
 sub problem_source_common_params {

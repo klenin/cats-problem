@@ -150,4 +150,12 @@ $split_subtasks = 'subtasks';
 $split_explicit = 'explicit';
 $split_default = 'default';
 
+# Resource types
+$res_types = {
+    git => 1,    # Git repository.
+    file => 2,   # Direct link to file.
+};
+
+$res_types_names = { reverse %$res_types };
+
 1;

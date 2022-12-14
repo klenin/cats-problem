@@ -5,7 +5,7 @@ use warnings;
 
 use File::Spec;
 use FindBin;
-use Test::More tests => 22;
+use Test::More tests => 23;
 use Test::Exception;
 
 use lib File::Spec->catdir($FindBin::Bin, '..');
@@ -1271,4 +1271,50 @@ subtest 'modules', sub {
     is $p->{modules}->[1]->{src}, 'content', 'module 1 src';
     is $p->{modules}->[2]->{path}, 'c.pp', 'module 2 path';
     is $p->{modules}->[2]->{src}, "&\n<>&&\n", 'module 2 src';
+};
+
+subtest 'resources', sub {
+    plan tests => 7;
+
+    throws_ok { parse({
+        'test.xml' => wrap_problem(q~
+<Checker src="t.pp"/>
+<Resource name="r-1" url="http://example.com" type="git"/>~),
+        't.pp' => 'q',
+    }) } qr/invalid.*name.*r\-1/i, 'bad name';
+
+    throws_ok { parse({
+        'test.xml' => wrap_problem(q~
+<Checker src="t.pp"/>
+<Resource name="r1" url="http://example.com" type="fgf"/>~),
+        't.pp' => 'q',
+    }) } qr/invalid.*type.*fgf/i, 'bad type';
+
+    throws_ok { parse({
+        'test.xml' => wrap_problem(q~
+<Checker src="t.pp"/>
+<Resource name="r1" type="git"/>~),
+        't.pp' => 'q',
+    }) } qr/Resource.url/i, 'missing url';
+
+    throws_ok { parse({
+        'test.xml' => wrap_problem(q~
+<Checker src="t.pp"/>
+<Resource name="r1" url="http://example1.com" type="git"/>
+<Resource name="r2" url="http://example1.com" type="git"/>~),
+        't.pp' => 'q',
+    }) } qr/duplicate.*url.*r2.*r1/i, 'duplicate url';
+
+    my $p = parse({
+        'test.xml' => wrap_problem(q~
+<Checker src="t.pp"/>
+<Resource name="r1" url="http://example1.com" type="git"/>
+<Resource name="r2" url="http://example2.com" type="file"/>~),
+        't.pp' => 'q',
+    });
+    is @{$p->{resources}}, 2, 'resource count';
+    is_deeply $p->{resources}->[0],
+        { id => 'r1', name => 'r1', url => 'http://example1.com', res_type => 1 }, 'resource 1';
+    is_deeply $p->{resources}->[1],
+        { id => 'r2', name => 'r2', url => 'http://example2.com', res_type => 2 }, 'resource 2';
 };
