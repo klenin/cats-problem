@@ -370,7 +370,9 @@ sub parse_memory_unit {
 
     my $bytes = $1 * $m{$2 || 'M'};
 
-    $bytes % $m{$convert_to} ? $on_error->("Value of '$attrib_name' must be in whole ${convert_to}bytes") : $bytes / $m{$convert_to};
+    $bytes % $m{$convert_to} ?
+        $on_error->("Value of '$attrib_name' must be in whole ${convert_to}bytes") :
+        $bytes / $m{$convert_to};
 };
 
 sub start_tag_Problem {
@@ -741,7 +743,8 @@ sub start_tag_include {
     (my CATS::Problem::Parser $self, my $atts) = @_;
     my $name = $atts->{src};
     ${$self->current_tag->{stml}} .= Encode::decode(
-        $self->{problem}{encoding}, $self->{source}->read_member($name, "Invalid 'include' reference: '$name'")
+        $self->{problem}{encoding},
+        $self->{source}->read_member($name, "Invalid 'include' reference: '$name'")
     );
 }
 
