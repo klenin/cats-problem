@@ -714,7 +714,7 @@ sub start_tag_Run {
         competitive_modules => $cats::rm_competitive_modules,
     );
     defined($self->{problem}{run_method} = $methods{$m})
-        or $self->error("Unknown run method: '$m', must be one of: " . join ', ', keys %methods);
+        or $self->error("Unknown run method: '$m', must be one of: " . join ', ', sort keys %methods);
 
     my $is_competitive =
         0 < grep $self->{problem}{run_method} == $_,
