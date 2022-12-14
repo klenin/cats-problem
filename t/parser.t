@@ -1281,7 +1281,7 @@ subtest 'modules', sub {
 };
 
 subtest 'resources', sub {
-    plan tests => 7;
+    plan tests => 10;
 
     throws_ok { parse({
         'test.xml' => wrap_problem(q~
@@ -1312,16 +1312,31 @@ subtest 'resources', sub {
         't.pp' => 'q',
     }) } qr/duplicate.*url.*r2.*r1/i, 'duplicate url';
 
+    throws_ok { parse({
+        'test.xml' => wrap_problem(q~
+<Checker src="t.pp" resources="r2"/>
+<Resource name="r1" url="http://example.com" type="git"/>~),
+        't.pp' => 'q',
+    }) } qr/undefined.*r2/i, 'bad resource';
+
+    throws_ok { parse({
+        'test.xml' => wrap_problem(q~
+<Resource name="r1" url="http://example.com" type="git"/>
+<Checker src="t.pp" resources="r1,r1"/>~),
+        't.pp' => 'q',
+    }) } qr/duplicate.*r1/i, 'duplicate resource';
+
     my $p = parse({
         'test.xml' => wrap_problem(q~
-<Checker src="t.pp"/>
 <Resource name="r1" url="http://example1.com" type="git"/>
-<Resource name="r2" url="http://example2.com" type="file"/>~),
+<Resource name="r2" url="http://example2.com" type="file"/>
+<Checker src="t.pp" resources="r2,r1"/>~),
         't.pp' => 'q',
     });
     is @{$p->{resources}}, 2, 'resource count';
-    is_deeply $p->{resources}->[0],
-        { id => 'r1', name => 'r1', url => 'http://example1.com', res_type => 1 }, 'resource 1';
-    is_deeply $p->{resources}->[1],
-        { id => 'r2', name => 'r2', url => 'http://example2.com', res_type => 2 }, 'resource 2';
+    is_deeply { %{$p->{resources}->[0]}{qw(name url res_type)} },
+        { name => 'r1', url => 'http://example1.com', res_type => 1 }, 'resource 1';
+    is_deeply { %{$p->{resources}->[1]}{qw(name url res_type)} },
+        { name => 'r2', url => 'http://example2.com', res_type => 2 }, 'resource 2';
+    is_deeply $p->{checker}->{resources}, [ 'r2', 'r1' ], 'resource refs';
 };

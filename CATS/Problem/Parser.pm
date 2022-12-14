@@ -469,9 +469,21 @@ sub start_tag_Resource {
     }
 
     my $resource = {
-        id => $self->{id_gen}->($self, $atts->{name}),
+        id => $self->{id_gen}->($self, $atts->{name}), kind => 'resource',
         %$atts{qw(name url)}, res_type => $res_type };
     push @{$self->{problem}->{resources}}, $self->set_named_object($atts->{name}, $resource);
+}
+
+sub parse_resources_list {
+    (my CATS::Problem::Parser $self, my $atts) = @_;
+    my $r = $atts->{resources} or return [];
+    my @names = split ',', $r;
+    my %h;
+    for (@names) {
+        $h{$_}++ and $self->error(
+            sprintf q~Duplicate resource '%s' for source '%s'~, $_, $atts->{name} // '?');
+    }
+    [ map $self->get_named_object($_, 'resource')->{id}, @names ];
 }
 
 sub problem_source_common_params {
@@ -485,6 +497,7 @@ sub problem_source_common_params {
         memory_limit => parse_memory_unit($atts ,'memoryLimit', 'M', sub { $self->error(@_) }),
         write_limit => parse_memory_unit($atts, 'writeLimit', 'B', sub { $self->error(@_) }),
         name => $atts->{name},
+        resources => $self->parse_resources_list($atts),
     );
 }
 
@@ -515,7 +528,7 @@ sub start_tag_Checker {
 sub start_tag_Interactor {
     (my CATS::Problem::Parser $self, my $atts) = @_;
 
-    $self->error("Found several interactors") if exists $self->{problem}{interactor};
+    $self->error('Found several interactors') if exists $self->{problem}{interactor};
 
     $self->{problem}{interactor} = {
         $self->problem_source_common_params($atts, 'interactor')
