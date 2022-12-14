@@ -452,7 +452,7 @@ sub start_tag_Snippet {
         $snippet->{generator_id} =
             $self->get_imported_id($gen_id) || $self->get_named_object($gen_id)->{id};
     }
-    push @{$self->{problem}->{snippets}}, $snippet;
+    push @{$self->{problem}->{snippets}}, $self->set_named_object($atts->{name}, $snippet);
 }
 
 sub start_tag_Resource {

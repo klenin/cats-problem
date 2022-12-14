@@ -1184,7 +1184,7 @@ subtest 'quiz', sub {
 };
 
 subtest 'snippets', sub {
-    plan tests => 7;
+    plan tests => 8;
 
     throws_ok { parse({
         'test.xml' => wrap_problem(q~
@@ -1192,6 +1192,13 @@ subtest 'snippets', sub {
 <Snippet name="s-1"/>~),
         't.pp' => 'q',
     }) } qr/invalid.*name.*s\-1/i, 'bad name';
+
+    throws_ok { parse({
+        'test.xml' => wrap_problem(q~
+<Checker src="t.pp"/>
+<Snippet name="s1"/><Snippet name="s1"/>~),
+        't.pp' => 'q',
+    }) } qr/duplicate.*s1/i, 'duplicate name';
 
     throws_ok { parse({
         'test.xml' => wrap_problem(q~
