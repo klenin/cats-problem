@@ -53,19 +53,34 @@ sub get_problem {
 
 sub get_problem_sources {
     my ($pid) = @_;
-    my $problem_sources = $dbh->selectall_arrayref(q~
-        SELECT psl.*, dd.code FROM problem_sources ps
-            INNER JOIN problem_sources_local psl ON psl.id = ps.id
-            INNER JOIN default_de dd ON dd.id = psl.de_id
-        WHERE ps.problem_id = ? ORDER BY ps.id~, { Slice => {} },
+
+    my $fields = join ', ', map "PSL.$_", qw(
+        stype
+        de_id
+        src
+        fname
+        name
+        input_file
+        output_file
+        guid
+        time_limit
+        memory_limit
+        write_limit
+        main
+    );
+    my $problem_sources = $dbh->selectall_arrayref(qq~
+        SELECT PS.id, $fields, D.code FROM problem_sources PS
+            INNER JOIN problem_sources_local PSL ON PSL.id = PS.id
+            INNER JOIN default_de D ON D.id = PSL.de_id
+        WHERE PS.problem_id = ? ORDER BY PS.id~, { Slice => {} },
         $pid);
 
-    my $imported = $dbh->selectall_arrayref(q~
-        SELECT psl.*, ps.id, dd.code FROM problem_sources ps
-            INNER JOIN problem_sources_imported psi ON psi.id = ps.id
-            LEFT JOIN problem_sources_local psl ON psl.guid = psi.guid
-            LEFT JOIN default_de dd ON dd.id = psl.de_id
-        WHERE ps.problem_id = ? ORDER BY ps.id~, { Slice => {} },
+    my $imported = $dbh->selectall_arrayref(qq~
+        SELECT PS.id, $fields, D.code FROM problem_sources PS
+            INNER JOIN problem_sources_imported PSI ON PSI.id = PS.id
+            LEFT JOIN problem_sources_local PSL ON PSL.guid = PSI.guid
+            LEFT JOIN default_de D ON D.id = PSL.de_id
+        WHERE PS.problem_id = ? ORDER BY PS.id~, { Slice => {} },
         $pid);
 
     $_->{is_imported} = 1 for @$imported;
