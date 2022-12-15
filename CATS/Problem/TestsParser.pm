@@ -197,6 +197,7 @@ sub start_tag_Out {
     if (defined $atts->{snippet}) {
         for (@t) {
             my $snippet = apply_test_rank($atts->{snippet}, $_->{rank});
+            $self->get_named_object($snippet, 'snippet');
             $self->set_test_attr($_, 'snippet_name', $snippet);
         }
     }

@@ -1184,7 +1184,7 @@ subtest 'quiz', sub {
 };
 
 subtest 'snippets', sub {
-    plan tests => 10;
+    plan tests => 11;
 
     throws_ok { parse({
         'test.xml' => wrap_problem(q~
@@ -1204,9 +1204,16 @@ subtest 'snippets', sub {
         'test.xml' => wrap_problem(q~
 <Checker src="t.pp"/>
 <Snippet name="s1"/>
-<Test rank="1"><In>1</In><Out snippet="snip%n">2</Out></Test>~),
+<Test rank="1"><In>1</In><Out snippet="s1">2</Out></Test>~),
         't.pp' => 'q',
     }) } qr/output file.*snippet/i, 'both output and snippet';
+
+    throws_ok { parse({
+        'test.xml' => wrap_problem(q~
+<Checker src="t.pp"/>
+<Test rank="1"><In>1</In><Out snippet="s1"/></Test>~),
+        't.pp' => 'q',
+    }) } qr/undefined.*s1/i, 'bad snippet';
 
     throws_ok { parse({
         'test.xml' => wrap_problem(q~
