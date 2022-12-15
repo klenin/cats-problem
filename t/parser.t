@@ -1347,7 +1347,7 @@ subtest 'resources', sub {
         'test.xml' => wrap_problem(q~
 <Resource name="r1" url="http://example1.com" type="git"/>
 <Resource name="r2" url="http://example2.com" type="file"/>
-<Checker src="t.pp" resources="r2,r1"/>~),
+<Checker src="t.pp" resources="r2:c,r1"/>~),
         't.pp' => 'q',
     });
     is @{$p->{resources}}, 2, 'resource count';
@@ -1355,5 +1355,5 @@ subtest 'resources', sub {
         { name => 'r1', url => 'http://example1.com', res_type => 1 }, 'resource 1';
     is_deeply { %{$p->{resources}->[1]}{qw(name url res_type)} },
         { name => 'r2', url => 'http://example2.com', res_type => 2 }, 'resource 2';
-    is_deeply $p->{checker}->{resources}, [ 'r2', 'r1' ], 'resource refs';
+    is_deeply $p->{checker}->{resources}, [ [ 'r2', 'c' ], [ 'r1', undef ] ], 'resource refs';
 };

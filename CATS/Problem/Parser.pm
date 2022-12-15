@@ -493,13 +493,16 @@ sub start_tag_Resource {
 sub parse_resources_list {
     (my CATS::Problem::Parser $self, my $atts) = @_;
     my $r = $atts->{resources} or return [];
-    my @names = split ',', $r;
     my %h;
-    for (@names) {
-        $h{$_}++ and $self->error(
-            sprintf q~Duplicate resource '%s' for source '%s'~, $_, $atts->{name} // '?');
-    }
-    [ map $self->get_named_object($_, 'resource')->{id}, @names ];
+    my $parse_single = sub {
+        my ($res_ref) = @_;
+        my ($name, $stages) = $res_ref =~ m/^([a-zA-Z0-9_]+)(?::(c|r|cr|rc))?$/ or $self->error(
+            sprintf q~Incorrect resource reference '%s' for source '%s'~, $_, $atts->{name} // '?');
+        $h{$name}++ and $self->error(
+            sprintf q~Duplicate resource '%s' for source '%s'~, $name, $atts->{name} // '?');
+        [ $self->get_named_object($name, 'resource')->{id}, $stages ];
+    };
+    [ map $parse_single->($_), split ',', $r ];
 }
 
 sub problem_source_common_params {
