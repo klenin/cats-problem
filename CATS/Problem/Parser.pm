@@ -441,18 +441,34 @@ sub start_tag_Picture {
         });
 }
 
-sub start_tag_Snippet {
-    (my CATS::Problem::Parser $self, my $atts) = @_;
+sub process_Snippet {
+    (my CATS::Problem::Parser $self, my $name, my $generator) = @_;
 
-    $atts->{name} =~ /^[a-zA-Z][a-zA-Z0-9_]*$/
-        or $self->error("Invalid snippet name '$atts->{name}'");
+    $name =~ /^[a-zA-Z][a-zA-Z0-9_]*$/
+        or $self->error("Invalid snippet name '$name'");
 
-    my $snippet = { name => $atts->{name} };
-    if (my $gen_id = $atts->{generator}) {
+    my $snippet = { name => $name, kind => 'snippet' };
+    if (my $gen_id = $generator) {
         $snippet->{generator_id} =
             $self->get_imported_id($gen_id) || $self->get_named_object($gen_id)->{id};
     }
-    push @{$self->{problem}->{snippets}}, $self->set_named_object($atts->{name}, $snippet);
+    push @{$self->{problem}->{snippets}}, $self->set_named_object($name, $snippet);
+}
+
+sub start_tag_Snippet {
+    (my CATS::Problem::Parser $self, my $atts) = @_;
+
+    if ($atts->{rank}) {
+        for ($self->parse_test_rank($atts->{rank})) {
+            $self->process_Snippet(
+                apply_test_rank($atts->{name}, $_),
+                apply_test_rank($atts->{generator}, $_),
+            );
+        }
+    }
+    else {
+        $self->process_Snippet($atts->{name}, $atts->{generator});
+    }
 }
 
 sub start_tag_Resource {

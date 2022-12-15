@@ -1184,7 +1184,7 @@ subtest 'quiz', sub {
 };
 
 subtest 'snippets', sub {
-    plan tests => 8;
+    plan tests => 10;
 
     throws_ok { parse({
         'test.xml' => wrap_problem(q~
@@ -1233,6 +1233,16 @@ subtest 'snippets', sub {
     is_deeply [ map $_->{name}, @{$p->{snippets}} ], [ qw(snipa snip1 snip2) ], 'snippet names';
     is $p->{snippets}->[2]->{generator_id}, 'gen.pp', 'snippet 2 gen';
     is_deeply [ map $p->{tests}->{$_}->{snippet_name}, 1..3 ], [ qw(snip1 snip2 snipa) ], 'test snippets';
+
+    my $p1 = parse({
+        'test.xml' => wrap_problem(q~
+<Checker src="checker.pp"/>
+<Snippet rank="1-4" name="sn%n"/>
+<Test rank="1-4"><In>1</In><Out snippet="sn%n"/></Test>~),
+        'checker.pp' => 'begin end.',
+    });
+    is @{$p1->{snippets}}, 4, 'snippet count 2';
+    is_deeply [ map $p1->{tests}->{$_}->{snippet_name}, 1..4 ], [ map "sn$_", 1..4 ], 'test snippets 2';
 };
 
 subtest 'modules', sub {
