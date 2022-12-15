@@ -120,8 +120,9 @@ sub get_snippet_text {
         WHERE problem_id = ? AND contest_id = ? AND account_id = ? AND name = ?~);
     [ map {
         $sth->execute($problem_id, $contest_id, $account_id, $_);
-        scalar $sth->fetchrow_array;
+        my $t = $sth->fetchrow_array;
         $sth->finish;
+        $t;
     } @$names ];
 }
 
