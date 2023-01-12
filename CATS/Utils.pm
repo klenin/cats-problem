@@ -15,6 +15,7 @@ our @EXPORT = qw(
     external_url_function
     file_type
     file_type_long
+    format_tz
     group_digits
     mode_str
     redirect_url_function
@@ -403,16 +404,29 @@ sub source_hash {
     Digest::MD5::md5_hex(Encode::encode_utf8($_[0]));
 }
 
+sub format_tz {
+    my ($offset) = @_;
+    $offset or return '';
+    my $sign = $offset < 0 ? '-' : '+';
+    my $o = abs($offset);
+    my $hours = int($o);
+    my $minutes = ($o - $hours) * 60;
+    sprintf '%s%02d%02d', $sign, $hours, $minutes;
+}
+
 sub date_to_iso {
-    $_[0] or return undef;
-    $_[0] =~ /^\s*(\d+)\.(\d+)\.(\d+)\s+(\d+):(\d+)\s*$/;
-    "$3$2$1T$4${5}00";
+    my ($date, $tz_offset) = @_;
+    $date or return undef;
+    $date =~ /^\s*(\d+)\.(\d+)\.(\d+)\s+(\d+):(\d+)\s*$/ or die "Bad date: $date";
+    "$3$2$1T$4${5}00" . format_tz($tz_offset // $CATS::Config::timezone_offset);
 }
 
 my @month_names = qw(Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec);
 sub date_to_rfc822 {
-    $_[0] =~ /^\s*(\d+)\.(\d+)\.(\d+)\s+(\d+):(\d+)\s*$/;
-    "$1 $month_names[$2 - 1] $3 $4:$5 +1000";
+    my ($date, $tz_offset) = @_;
+    my $tz = format_tz($tz_offset // $CATS::Config::timezone_offset);
+    $date =~ /^\s*(\d+)\.(\d+)\.(\d+)\s+(\d+):(\d+)\s*$/ or die "Bad date: $date";
+    "$1 $month_names[$2 - 1] $3 $4:$5" . ($tz ? " $tz" : '');
 }
 
 sub encodings {{
