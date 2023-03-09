@@ -56,6 +56,8 @@ sub cats_dir() {
 
 our $repos_dir = File::Spec->catdir(cats_dir(), 'repos');
 
+our $spellcheck_dir = '/usr/share/hunspell';
+
 our $DOWN = 0;
 
 our $split = {
