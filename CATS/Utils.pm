@@ -3,6 +3,7 @@ package CATS::Utils;
 use strict;
 use warnings;
 
+use Carp;
 use Exporter qw(import);
 
 our @EXPORT = qw(
@@ -362,6 +363,7 @@ sub external_url_function {
 
 sub url_function {
     my ($f, @rest) = @_;
+    confess if @rest % 2;
     # New format, cats/<route>
     redirect_url_function($CATS::Config::relative_url . $f, @rest)
     # Old format, cats?f=<route>
@@ -370,6 +372,7 @@ sub url_function {
 
 sub absolute_url_function {
     my ($f, @rest) = @_;
+    confess if @rest % 2;
     redirect_url_function($CATS::Config::absolute_url . $f, @rest)
 }
 
