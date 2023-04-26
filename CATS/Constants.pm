@@ -119,6 +119,7 @@ $rm_default = 0;
 $rm_interactive = 1;
 $rm_competitive = 2;
 $rm_competitive_modules = 3;
+$rm_none = 4;
 
 $penalty = 20;
 

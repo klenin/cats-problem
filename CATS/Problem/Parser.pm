@@ -173,8 +173,8 @@ sub check_top_tag {
 
 sub checker_added {
     my CATS::Problem::Parser $self = shift;
-    $self->{problem}{has_checker} and $self->error('Found several checkers');
-    $self->{problem}{has_checker} = 1;
+    $self->{problem}->{has_checker} and $self->error('Found several checkers');
+    $self->{problem}->{has_checker} = 1;
 }
 
 sub create_generator {
@@ -236,11 +236,16 @@ sub validate {
         $_->{out_file} //= $_->{out_text};
     }
 
-    $problem->{run_method} ||= $cats::rm_default;
+    $problem->{run_method} //= $cats::rm_default;
 
     $problem->{$_} && $problem->{description}->{"${_}_url"}
         and $self->warning("Both stml and url for $_") for qw(statement explanation);
-    $problem->{has_checker} or $self->error('No checker specified');
+    if ($problem->{run_method} != $cats::rm_none) {
+        $problem->{has_checker} or $self->error('No checker specified');
+    }
+    else {
+        !$problem->{has_checker} or $self->error('Checker specified for run method "none"');
+    }
 
     my $need_interactor =
         0 < grep $_ == $problem->{run_method},
@@ -744,6 +749,7 @@ sub start_tag_Run {
         interactive => $cats::rm_interactive,
         competitive => $cats::rm_competitive,
         competitive_modules => $cats::rm_competitive_modules,
+        none => $cats::rm_none,
     );
     defined($self->{problem}{run_method} = $methods{$m})
         or $self->error("Unknown run method: '$m', must be one of: " . join ', ', sort keys %methods);

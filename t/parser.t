@@ -890,7 +890,7 @@ subtest 'interactor', sub {
 };
 
 subtest 'run method', sub {
-    plan tests => 12;
+    plan tests => 14;
 
     my $p = parse({
         'test.xml' => wrap_problem(q~
@@ -967,6 +967,20 @@ subtest 'run method', sub {
     });
 
     is_deeply $p->{players_count}, [ 2, 4, 5 ], 'run method = competitive, players_count = 2,4-5';
+
+    $p = parse({
+        'test.xml' => wrap_problem(q~
+<Run method="none"/>~),
+    });
+    is $p->{run_method}, $cats::rm_none, 'run method = none';
+
+    throws_ok { parse({
+        'test.xml' => wrap_problem(q~
+<Run method="none" />
+<Checker src="t.pp" style="testlib"/>~),
+        't.pp' => 'q',
+    }) } qr/Checker.*none/, 'run method = none but has checker';
+
 };
 
 subtest 'memory unit suffix', sub {
