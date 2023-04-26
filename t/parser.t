@@ -123,9 +123,8 @@ subtest 'rename', sub {
     is parse({
         'test.xml' => wrap_xml(q~
 <Problem title="Old Title" lang="en" tlimit="5" mlimit="6" inputFile="input.txt" outputFile="output.txt">
-<Checker src="checker.pp"/>
+<Run method="none"/>
 </Problem>~),
-        'checker.pp' => 'begin end.',
     }, { old_title => 'Old Title' })->{description}->{title}, 'Old Title', 'expected rename';
 };
 
@@ -219,10 +218,9 @@ statement</ProblemStatement>
 
     my $p1 = parse({
         'test.xml' => wrap_problem(q~
-<Checker src="checker.pp"/>
+<Run method="none"/>
 <ProblemStatement>outside<b  class="  z  " > inside </b></ProblemStatement>
 <ProblemConstraints>before<include src="incl"/>after</ProblemConstraints>~),
-        'checker.pp' => 'z',
         'incl' => 'included'
     });
     is $p1->{statement}, 'outside<b class="  z  "> inside </b>', 'tag reconstruction';
@@ -230,9 +228,8 @@ statement</ProblemStatement>
 
     my $p2 = parse({
         'test.xml' => wrap_problem(q~
-<Checker src="checker.pp"/>
+<Run method="none"/>
 <ProblemStatement>&amp;&lt;&gt;&quot;</ProblemStatement>~),
-        'checker.pp' => 'z',
     });
     is $p2->{statement}, '&amp;&lt;&gt;&quot;', 'xml characters';
 
@@ -251,15 +248,13 @@ statement</ProblemStatement>
     throws_ok { parse({
         'test.xml' => wrap_problem(q~
 <ProblemStatement><include/></ProblemStatement>
-<Checker src="checker.pp"/>~),
-        'checker.pp' => 'z',
+<Run method="none"/>~),
     }) } qr/include/, 'no incude src';
 
     throws_ok { parse({
         'test.xml' => wrap_problem(q~
 <ProblemStatement><include src="qqq"/></ProblemStatement>
-<Checker src="checker.pp"/>~),
-        'checker.pp' => 'z',
+<Run method="none"/~),
     }) } qr/qqq/, 'bad incude src';
 
     throws_ok { parse({
@@ -328,9 +323,8 @@ subtest 'picture-attachment', sub {
 <ProblemStatement>
 text <img picture="p1"/> <a attachment="a1"/>
 </ProblemStatement>
-<Checker src="checker.pp"/>
+<Run method="none"/>
 ~),
-        'checker.pp' => 'z',
         'p1.img' => 'p1data',
         'a1.txt' => 'a1data',
     });
@@ -455,8 +449,7 @@ subtest 'sample', sub {
 <Sample rank="1"><SampleIn src="s"/><SampleOut src="s"/></Sample>
 <Sample rank="2"><SampleIn>aaa</SampleIn><SampleOut>bbb</SampleOut></Sample>
 <Sample rank="3"><SampleIn html="1">&amp;<b>&lt;</b></SampleIn><SampleOut>&amp;<b>&lt;</b></SampleOut></Sample>
-<Checker src="checker.pp"/>~),
-            'checker.pp' => 'zz',
+<Run method="none"/>~),
             's' => 'sss',
         });
         is scalar(keys %{$p->{samples}}), 3, 'Sample count';
@@ -480,8 +473,7 @@ subtest 'sample', sub {
 <Sample rank="3"><SampleIn>s33</SampleIn></Sample>
 <Sample rank="1"><SampleOut>out</SampleOut></Sample>
 
-<Checker src="checker.pp"/>~),
-            'checker.pp' => 'zz',
+<Run method="none"/>~),
             's1' => 's11',
             's2' => 's22',
             's3' => 's33',
@@ -990,9 +982,8 @@ subtest 'memory unit suffix', sub {
         parse({
         'test.xml' => wrap_xml(qq~
 <Problem title="asd" lang="en" tlimit="5" inputFile="asd" outputFile="asd" $_[0]>
-<Checker src="checker.pp"/>
+<Run method="none"/>
 </Problem>~),
-        'checker.pp' => 'begin end.',
         })->{description}
     };
 
@@ -1078,58 +1069,49 @@ subtest 'quiz', sub {
     throws_ok { parse({
         'test.xml' => wrap_problem(q~
 <ProblemStatement><Quiz type="zzz" rank="2" points="1"></Quiz></ProblemStatement>
-<Checker src="checker.pp"/>~),
-        'checker.pp' => 'begin end.',
+<Run method="none"/>~),
     }) } qr/unknown.*type.*zzz/i, 'Quiz bad type';
     throws_ok { parse({
         'test.xml' => wrap_problem(q~
 <ProblemStatement><Quiz type="text" rank="2" points="1"></Quiz></ProblemStatement>
-<Checker src="checker.pp"/>~),
-        'checker.pp' => 'begin end.',
+<Run method="none"/>~),
     }) } qr/missing\stest.*1/i, 'Quiz bad rank';
     throws_ok { parse({
         'test.xml' => wrap_problem(q~
 <ProblemStatement><Quiz type="text" rank="1" points="1"></Quiz></ProblemStatement>
 <Test rank="1" points="2"><Out>2</Out></Test>
-<Checker src="checker.pp"/>~),
-        'checker.pp' => 'begin end.',
+<Run method="none"/>~),
     }) } qr/redefined.*points.*1/i, 'Quiz duplicate points';
 
     throws_ok { parse({
         'test.xml' => wrap_problem(q~
 <ProblemStatement><Quiz type="text"><Text>text<Text>text</Text></Text></Quiz></ProblemStatement>
-<Checker src="checker.pp"/>~),
-        'checker.pp' => 'begin end.',
+<Run method="none"/>~),
     }) } qr/unexpected.*text/i, 'Quiz nested text';
     throws_ok { parse({
         'test.xml' => wrap_problem(q~
 <ProblemStatement><Quiz type="text"><Quiz></Quiz></Quiz></ProblemStatement>
-<Checker src="checker.pp"/>~),
-        'checker.pp' => 'begin end.',
+<Run method="none"/>~),
     }) } qr/unexpected.*quiz/i, 'Quiz nested';
     throws_ok { parse({
         'test.xml' => wrap_problem(q~
 <ProblemStatement><Quiz type="checkbox"><Answer/></Quiz></ProblemStatement>
-<Checker src="checker.pp"/>~),
-        'checker.pp' => 'begin end.',
+<Run method="none"/>~),
     }) } qr/answer.*checkbox.*text/i, 'Answer not in type text';
     throws_ok { parse({
         'test.xml' => wrap_problem(q~
 <ProblemStatement><Quiz type="text"><Answer>1</Answer><Answer>2</Answer></Quiz></ProblemStatement>
-<Checker src="checker.pp"/>~),
-        'checker.pp' => 'begin end.',
+<Run method="none"/>~),
     }) } qr/redefined.*out_file.*1/i, 'Duplicate Answer';
     throws_ok { parse({
         'test.xml' => wrap_problem(q~
 <ProblemStatement><Quiz type="text"><Choice/></Quiz></ProblemStatement>
-<Checker src="checker.pp"/>~),
-        'checker.pp' => 'begin end.',
+<Run method="none"/>~),
     }) } qr/choice.*text/i, 'Choice inside Quiz.text';
     throws_ok { parse({
         'test.xml' => wrap_problem(q~
 <ProblemStatement><Quiz type="radiogroup"><Choice correct="1"/><Choice correct="1"/></Quiz></ProblemStatement>
-<Checker src="checker.pp"/>~),
-        'checker.pp' => 'begin end.',
+<Run method="none"/>~),
     }) } qr/multiple.*correct/i, 'Multiple correct choices for Quiz.radiogroup';
 
     {
@@ -1139,9 +1121,8 @@ subtest 'quiz', sub {
 <Quiz type="text" points="3"><Text>123</Text></Quiz>
 <Quiz type="text" points="1" descr="q2"></Quiz>
 </ProblemStatement>
-<Checker src="checker.pp"/>
+<Run method="none"/>
 <Test rank="1-2"><Out>2</Out></Test>~),
-            'checker.pp' => 'begin end.',
         });
         is $p->{statement}, '
 <Quiz points="3" type="text"><Text>123</Text></Quiz>
@@ -1156,8 +1137,7 @@ subtest 'quiz', sub {
         my $p = parse({
             'test.xml' => wrap_problem(q~
 <ProblemStatement><Quiz type="text"><Answer>rr</Answer></Quiz></ProblemStatement>
-<Checker src="checker.pp"/>~),
-            'checker.pp' => 'begin end.',
+<Run method="none"/>~),
         });
         is $p->{statement}, '<Quiz type="text"></Quiz>', 'Quiz text answer statement';
         is $p->{tests}->{1}->{in_file}, '1', 'Quiz text in_file';
@@ -1170,8 +1150,7 @@ subtest 'quiz', sub {
 <Quiz type="checkbox"><Choice correct="1">one</Choice><Choice>two</Choice><Choice correct="1">three</Choice></Quiz>
 <Quiz type="radiogroup"><Choice>one</Choice><Choice correct="1">two</Choice><Choice>three</Choice></Quiz>
 </ProblemStatement>
-<Checker src="checker.pp"/>~),
-            'checker.pp' => 'begin end.',
+<Run method="none"/>~),
         });
         is $p->{statement}, '
 <Quiz type="checkbox"><Choice>one</Choice><Choice>two</Choice><Choice>three</Choice></Quiz>
@@ -1189,8 +1168,7 @@ subtest 'quiz', sub {
 <Quiz type="text"><Text>123</Text></Quiz>
 <Quiz type="checkbox"><Choice/><Choice/></Quiz>
 </ProblemStatement>
-<Checker src="checker.pp"/>~),
-            'checker.pp' => 'begin end.',
+<Run method="none"/>~),
         });
         is scalar(keys %{$p->{tests}}), 0, 'Quiz no tests';
     }
@@ -1202,43 +1180,37 @@ subtest 'snippets', sub {
 
     throws_ok { parse({
         'test.xml' => wrap_problem(q~
-<Checker src="t.pp"/>
 <Snippet name="s-1"/>~),
-        't.pp' => 'q',
     }) } qr/invalid.*name.*s\-1/i, 'bad name';
 
     throws_ok { parse({
         'test.xml' => wrap_problem(q~
-<Checker src="t.pp"/>
+<Run method="none"/>
 <Snippet name="s1"/><Snippet name="s1"/>~),
-        't.pp' => 'q',
     }) } qr/duplicate.*s1/i, 'duplicate name';
 
     throws_ok { parse({
         'test.xml' => wrap_problem(q~
-<Checker src="t.pp"/>
+<Run method="none"/>
 <Snippet name="s1"/>
 <Test rank="1"><In>1</In><Out snippet="s1">2</Out></Test>~),
-        't.pp' => 'q',
     }) } qr/output file.*snippet/i, 'both output and snippet';
 
     throws_ok { parse({
         'test.xml' => wrap_problem(q~
-<Checker src="t.pp"/>
+<Run method="none"/>
 <Test rank="1"><In>1</In><Out snippet="s1"/></Test>~),
-        't.pp' => 'q',
     }) } qr/undefined.*s1/i, 'bad snippet';
 
     throws_ok { parse({
         'test.xml' => wrap_problem(q~
-<Checker src="t.pp"/>
+<Run method="none"/>
 <Snippet name="s1" generator="nogen"/>~),
-        't.pp' => 'q',
     }) } qr/undefined.*nogen/i, 'bad generator';
 
     my $p = parse({
         'test.xml' => wrap_problem(q~
-<Checker src="checker.pp"/>
+<Run method="none"/>
 <Generator name="gen" src="gen.pp"/>
 <Snippet name="snipa"/>
 <Snippet name="snip1"/>
@@ -1246,7 +1218,6 @@ subtest 'snippets', sub {
 <Test rank="1-2"><In>1</In><Out snippet="snip%n"/></Test>
 <Test rank="3"><In>1</In><Out snippet="snipa"/></Test>
 ~),
-        'checker.pp' => 'begin end.',
         'gen.pp' => 'begin end.',
     });
 
@@ -1257,10 +1228,9 @@ subtest 'snippets', sub {
 
     my $p1 = parse({
         'test.xml' => wrap_problem(q~
-<Checker src="checker.pp"/>
+<Run method="none"/>
 <Snippet rank="1-4" name="sn%n"/>
 <Test rank="1-4"><In>1</In><Out snippet="sn%n"/></Test>~),
-        'checker.pp' => 'begin end.',
     });
     is @{$p1->{snippets}}, 4, 'snippet count 2';
     is_deeply [ map $p1->{tests}->{$_}->{snippet_name}, 1..4 ], [ map "sn$_", 1..4 ], 'test snippets 2';
