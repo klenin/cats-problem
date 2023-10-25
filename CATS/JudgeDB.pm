@@ -482,7 +482,7 @@ sub update_judge_de_bitmap {
     }
     elsif (grep +($cache->{$_} // '') ne ($jbmp->{$_} // ''), keys %$jbmp) {
         $dbh->do(_u $sql->update('judge_de_bitmap_cache', $jbmp, $jid));
-        warn Dumper($jbmp);
+        #warn Dumper($jbmp);
     }
 }
 
