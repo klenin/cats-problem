@@ -796,7 +796,14 @@ sub blob {
         return $result;
     }
 
-    if ($mimetype =~ m!^image/|^application/pdf!) {
+    if ($enc eq 'HEX') {
+        binmode $fd;
+        local $/ = undef;
+        my $nr;
+        $result->{lines} = [ map +{ number => ++$nr, text => $_ },
+            split "\n", CATS::Utils::hex_dump(scalar <$fd>, 40) ];
+    }
+    elsif ($mimetype =~ m!^image/|^application/pdf!) {
         my @parts = split CATS::Config::cats_dir, $self->{dir} . $file;
         $result->{image} = $parts[1];
     }
@@ -809,7 +816,7 @@ sub blob {
             $line = Encode::decode($enc, $line);
             $line = untabify($line);
             $nr++;
-            push @{$result->{lines}}, {number => $nr, text => $line};
+            push @{$result->{lines}}, { number => $nr, text => $line };
         }
     }
     close $fd;
